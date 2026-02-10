@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "Halo is a dating app that prioritizes emotional connection: Values onboarding, Blind discovery feed (no photos), Contextual messaging (Sparks), and a gamified Secure Reveal (photos clarify as conversation deepens)."
 
+## Clarifications
+
+### Session 2026-02-10
+
+- Q: On Spark tap, should the app auto-send or prefill the composer? → A: Prefill the composer with the starter message; user can edit, then tap Send.
+- Q: What basic demographics appear on the blind discovery card? → A: Show age + coarse city/region on the discovery card.
+- Q: Should Connection Level ever decrease? → A: No. Connection Level is monotonic and only increases.
+- Q: What counts toward “exchanged message count” for Secure Reveal progression? → A: Only non-empty user-sent messages (including Sparks once sent); exclude system events.
+- Q: Is Connection Level shared or per-user? → A: Shared. One Connection Level per Match for both users.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Complete Values Onboarding Wizard (Priority: P1)
@@ -34,6 +44,7 @@ As a user, I want to swipe on profiles based on personality, avoiding bias from 
 **Acceptance Scenarios**:
 
 1. **Given** a user opens discovery, **When** a profile card is shown, **Then** it contains only text-based content (typography, vibe tags, and prompt answers) and contains no photos.
+  - And it may include age and coarse city/region.
 2. **Given** a user taps Pass, **When** they confirm the action (if confirmation is used), **Then** the current card is dismissed and the next card appears.
 3. **Given** a user taps Connect on another profile, **When** the action completes, **Then** the system records the intent and updates the UI to show the next card.
 
@@ -51,7 +62,8 @@ As a user, I want help starting meaningful conversations without saying “hey.�
 
 1. **Given** two users have a match, **When** either user opens the conversation, **Then** they can send and receive messages.
 2. **Given** a conversation is open, **When** Spark suggestions are displayed, **Then** they are relevant to the partner’s tags/prompts (e.g., tag “Jazz” leads to a Jazz-related question).
-3. **Given** a user sends a message, **When** they tap send, **Then** the message appears immediately in the conversation and later updates to reflect final delivery state.
+3. **Given** a user taps a Spark, **When** the Spark is selected, **Then** the message composer is pre-filled with a suggested starter message that the user can edit before sending.
+4. **Given** a user sends a message, **When** they tap send, **Then** the message appears immediately in the conversation and later updates to reflect final delivery state.
 
 ---
 
@@ -93,6 +105,7 @@ As a user, I want to trust that my private data and photos are protected, and th
 - Conversation message counts include deleted/edited messages: message counting rules must be consistent and documented.
 - Users are temporarily offline: outgoing messages appear immediately but reconcile later; failures are clearly surfaced.
 - Connection Level thresholds are met while one user is inactive: level does not advance without reciprocity.
+- Connection Level after stalling: levels do not decrease; progression remains paused until reciprocity rules are met.
 
 ## Requirements *(mandatory)*
 
@@ -117,7 +130,7 @@ As a user, I want to trust that my private data and photos are protected, and th
 #### Blind Discovery Feed
 
 - **FR-010**: The system MUST provide a discovery feed with a vertical card stack interaction.
-- **FR-011**: Each discovery card MUST display only text-first profile content: typography, “Vibe” tags, and answers to prompts.
+- **FR-011**: Each discovery card MUST display only text-first profile content: typography, “Vibe” tags, prompt answers, and basic demographics (age and coarse city/region).
 - **FR-012**: Discovery cards MUST NOT display photos (neither clear nor blurred) anywhere on the card.
 - **FR-013**: The system MUST provide two primary actions on discovery cards: Pass and Connect.
 - **FR-014**: The system MUST compute compatibility/ranking server-side and MUST return results without exposing raw scores or scoring logic to clients.
@@ -128,14 +141,17 @@ As a user, I want to trust that my private data and photos are protected, and th
 - **FR-020**: Matched users MUST be able to exchange messages in a 1:1 conversation.
 - **FR-021**: The system MUST provide Spark suggestions (conversation starter buttons) derived from the partner’s profile tags and prompt answers.
 - **FR-022**: The system MUST present multiple Spark options (at least 3) and SHOULD refresh or vary suggestions over time to avoid repetition.
-- **FR-023**: Selecting a Spark MUST create a ready-to-send starter message (either sent immediately or placed into the composer for review).
+- **FR-023**: Selecting a Spark MUST pre-fill the message composer with a suggested starter message that the user can edit before sending.
 - **FR-024**: When a user sends a chat message, the UI MUST show the message immediately and later reconcile it to an acknowledged “final” state (e.g., confirmed ID, timestamp, and delivery outcome).
 
 #### Gamified “Secure Reveal”
 
 - **FR-030**: Each match MUST have a Connection Level from 1 to 5.
+- **FR-030a**: Connection Level MUST be shared per Match (one level for both users), and photo visibility rules MUST be enforced consistently for both users at that shared level.
 - **FR-031**: Connection Level 1 MUST present the partner photo in a heavily blurred state; Connection Level 5 MUST present it as clear.
 - **FR-032**: Connection Level progression MUST be automatic and based on (a) exchanged message count and (b) reciprocal participation.
+- **FR-032a**: Connection Level MUST be monotonic: it MUST only increase and MUST NOT decrease once attained.
+- **FR-032b**: For the purposes of Secure Reveal progression, “exchanged messages” MUST count only non-empty user-sent chat messages. Spark-based messages count once they are sent as messages. System events (e.g., join/leave, delivery receipts, typing indicators) MUST NOT be counted.
 - **FR-033**: Default progression thresholds MUST be:
 
   | Level | Visual State (Example) | Total Exchanged Messages | Minimum Sent by Each User |
@@ -152,6 +168,7 @@ As a user, I want to trust that my private data and photos are protected, and th
 
 - **FR-040**: Discovery feed content MUST NOT include personally identifiable information or direct contact details (e.g., email, phone number, exact address, external handles).
 - **FR-041**: Location shown in discovery MUST be coarse (e.g., city/region), not an exact location.
+- **FR-041a**: If location is displayed on discovery cards, it MUST be coarse (city/region only) and MUST NOT include exact address, neighborhood-level detail, or precise coordinates.
 - **FR-042**: The system MUST limit discovery responses to only what is required to render the discovery card UI (text-first content only).
 
 ### Key Entities *(include if feature involves data)*
