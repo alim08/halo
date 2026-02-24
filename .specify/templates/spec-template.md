@@ -77,6 +77,15 @@
 
 ## Requirements *(mandatory)*
 
+**Constitution Compliance (mandatory)**: Requirements MUST comply with `.specify/memory/constitution.md`, especially:
+- client-agnostic JSON API behavior,
+- matching algorithm isolation (compatibility/scoring logic MUST live in Go service layer; frontend receives results only),
+- token-based auth portability (`Authorization: Bearer <token>`),
+- zero-trust media gating (server-side; signed URLs with short expiry where applicable),
+- data minimization and no PII in discovery/feed contexts.
+
+If this feature touches chat/real-time messaging, requirements MUST include optimistic UI expectations and backend acknowledgment payloads.
+
 <!--
   ACTION REQUIRED: The content in this section represents placeholders.
   Fill them out with the right functional requirements.
