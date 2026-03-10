@@ -131,7 +131,7 @@ As a user, I want to trust that my private data and photos are protected, and th
 
 - **FR-010**: The system MUST provide a discovery feed with a vertical card stack interaction.
 - **FR-011**: Each discovery card MUST display only text-first profile content: typography, “Vibe” tags, prompt answers, and basic demographics (age and coarse city/region).
-- **FR-012**: Discovery cards MUST NOT display photos (neither clear nor blurred) anywhere on the card.
+- **FR-012**: Discovery cards MUST NOT receive or render any photo URLs or image data in the API response payload (neither clear nor blurred). The client MUST have zero access to image assets at this stage.
 - **FR-013**: The system MUST provide two primary actions on discovery cards: Pass and Connect.
 - **FR-014**: The system MUST compute compatibility/ranking server-side and MUST return results without exposing raw scores or scoring logic to clients.
 - **FR-015**: When a user selects Connect, the system MUST record that intent. When two users have mutual Connect intent, the system MUST create a match and enable messaging.
@@ -139,7 +139,7 @@ As a user, I want to trust that my private data and photos are protected, and th
 #### Contextual Messaging (“Sparks”)
 
 - **FR-020**: Matched users MUST be able to exchange messages in a 1:1 conversation.
-- **FR-021**: The system MUST provide Spark suggestions (conversation starter buttons) derived from the partner’s profile tags and prompt answers.
+- **FR-021**: The system MUST provide Spark suggestions that are contextually mapped to specific partner tags or prompt answers (e.g., Tag “Jazz” → Spark “Favorite Jazz album?”). If no specific mapping exists for the partner’s available context, the system MUST fall back to generic “deep” questions (not random tags).
 - **FR-022**: The system MUST present multiple Spark options (at least 3) and SHOULD refresh or vary suggestions over time to avoid repetition.
 - **FR-023**: Selecting a Spark MUST pre-fill the message composer with a suggested starter message that the user can edit before sending.
 - **FR-024**: When a user sends a chat message, the UI MUST show the message immediately and later reconcile it to an acknowledged “final” state (e.g., confirmed ID, timestamp, and delivery outcome).
@@ -152,6 +152,7 @@ As a user, I want to trust that my private data and photos are protected, and th
 - **FR-032**: Connection Level progression MUST be automatic and based on (a) exchanged message count and (b) reciprocal participation.
 - **FR-032a**: Connection Level MUST be monotonic: it MUST only increase and MUST NOT decrease once attained.
 - **FR-032b**: For the purposes of Secure Reveal progression, “exchanged messages” MUST count only non-empty user-sent chat messages. Spark-based messages count once they are sent as messages. System events (e.g., join/leave, delivery receipts, typing indicators) MUST NOT be counted.
+- **FR-032c**: “Reciprocal participation” MUST mean each user in the match has sent at least the “Minimum Sent by Each User” messages required for the next level.
 - **FR-033**: Default progression thresholds MUST be:
 
   | Level | Visual State (Example) | Total Exchanged Messages | Minimum Sent by Each User |
@@ -162,7 +163,7 @@ As a user, I want to trust that my private data and photos are protected, and th
   | 5     | Clear                   | 70                        | 25                         |
 
 - **FR-034**: The system MUST display the current Connection Level and progress toward the next level.
-- **FR-035**: The system MUST enforce media access server-side so users cannot access clearer photo variants before their Connection Level allows it.
+- **FR-035**: The system MUST enforce media access server-side so clients cannot access clearer photo variants before their Connection Level allows it. The system MUST NOT send a clear-photo URL (or any higher-level photo variant URL) and rely on client-side CSS/filters/visibility to “hide” it.
 
 #### Privacy & Data Minimization
 
@@ -170,6 +171,7 @@ As a user, I want to trust that my private data and photos are protected, and th
 - **FR-041**: Location shown in discovery MUST be coarse (e.g., city/region), not an exact location.
 - **FR-041a**: If location is displayed on discovery cards, it MUST be coarse (city/region only) and MUST NOT include exact address, neighborhood-level detail, or precise coordinates.
 - **FR-042**: The system MUST limit discovery responses to only what is required to render the discovery card UI (text-first content only).
+- **FR-042a**: Discovery responses MUST NOT include any photo URLs, photo variant identifiers, or other image-access tokens.
 
 ### Key Entities *(include if feature involves data)*
 

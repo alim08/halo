@@ -1,0 +1,594 @@
+openapi: 3.0.3
+info:
+  title: Halo Universal API (MVP)
+  version: 0.1.0
+  description: |
+    Client-agnostic HTTP JSON API for Halo (web now, mobile later).
+    This contract enforces:
+    - JSON-only responses
+    - Bearer token auth
+    - discovery data minimization (no photos)
+    - server-gated Secure Reveal media URLs
+servers:
+  - url: https://api.example.com
+    description: Production
+  - url: http://localhost:8080
+    description: Local
+
+tags:
+  - name: Auth
+  - name: Profile
+  - name: Discovery
+  - name: Matches
+  - name: Chat
+  - name: Media
+  - name: Realtime
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/auth/register:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/me:
+    get:
+      tags: [Profile]
+      summary: Get current user (minimal)
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/me/profile:
+    put:
+      tags: [Profile]
+      summary: Upsert onboarding/profile data (resumable)
+      description: |
+        Stores onboarding progress and final profile data. Enforces 18+ rule.
+        The backend validates required fields and sets is_onboarded when complete.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertProfileRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/discovery:
+    get:
+      tags: [Discovery]
+      summary: Get blind discovery cards (text-only)
+      description: |
+        Returns text-first cards only. MUST NOT include any photo URLs,
+        photo tokens, or photo variant identifiers.
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: Discovery cards
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not onboarded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/discovery/{cardId}/pass:
+    post:
+      tags: [Discovery]
+      summary: Pass on a discovery card
+      parameters:
+        - $ref: '#/components/parameters/CardId'
+      responses:
+        '204':
+          description: Passed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/discovery/{cardId}/connect:
+    post:
+      tags: [Discovery]
+      summary: Connect on a discovery card
+      description: |
+        Records connect intent. If mutual intent exists, a match is created.
+      parameters:
+        - $ref: '#/components/parameters/CardId'
+      responses:
+        '200':
+          description: Intent recorded (and possibly matched)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/matches:
+    get:
+      tags: [Matches]
+      summary: List matches
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: cursor
+          schema: { type: string }
+          description: Opaque pagination cursor
+      responses:
+        '200':
+          description: Matches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMatchesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/matches/{matchId}/profile:
+    get:
+      tags: [Matches, Media]
+      summary: Get match partner profile with Secure Reveal photo URL
+      description: |
+        Returns partner profile plus *exactly one* photo URL variant allowed
+        by the shared Connection Level. The server must not leak higher-level
+        variants.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: Partner profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/matches/{matchId}/sparks:
+    get:
+      tags: [Chat]
+      summary: Get Spark suggestions for a match
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: Sparks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SparksResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/matches/{matchId}/messages:
+    get:
+      tags: [Chat]
+      summary: List messages (paged)
+      description: |
+        For initial load, the server may serve from Redis hot cache (last 50)
+        and fall back to Postgres.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+        - in: query
+          name: before
+          schema: { type: string, format: date-time }
+          description: Return messages strictly before this timestamp
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200':
+          description: Messages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMessagesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      tags: [Chat]
+      summary: Send a message (optimistic UI supported)
+      description: |
+        Client provides a client_message_id for optimistic UI reconciliation.
+        Server persists to Postgres and returns ack with server timestamp.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      responses:
+        '201':
+          description: Message accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendMessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/me/photos/upload-url:
+    post:
+      tags: [Media]
+      summary: Request an upload URL for a profile photo original
+      description: |
+        Returns a short-lived presigned URL for uploading an original image.
+        Variant generation is handled asynchronously (e.g., S3 event → Lambda).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUploadUrlRequest'
+      responses:
+        '200':
+          description: Upload URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUploadUrlResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/ws:
+    get:
+      tags: [Realtime]
+      summary: WebSocket endpoint (chat realtime)
+      description: |
+        Upgrades to WebSocket. The access token MUST be provided via
+        `Authorization: Bearer <token>` header (preferred) or a `token`
+        query param for clients that cannot set headers.
+      responses:
+        '101':
+          description: Switching Protocols
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    MatchId:
+      in: path
+      name: matchId
+      required: true
+      schema: { type: string, format: uuid }
+    CardId:
+      in: path
+      name: cardId
+      required: true
+      schema: { type: string }
+      description: Opaque discovery card identifier
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            request_id: { type: string }
+
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+
+    AuthResponse:
+      type: object
+      required: [access_token, token_type]
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, enum: [Bearer] }
+        expires_in_seconds: { type: integer }
+        refresh_token: { type: string, description: Opaque refresh token (store securely on client) }
+
+    MeResponse:
+      type: object
+      required: [id, is_onboarded, profile_data]
+      properties:
+        id: { type: string, format: uuid }
+        is_onboarded: { type: boolean }
+        coarse_location: { type: string }
+        profile_data:
+          type: object
+          additionalProperties: true
+
+    UpsertProfileRequest:
+      type: object
+      properties:
+        birthdate: { type: string, format: date }
+        coarse_location: { type: string }
+        profile_data:
+          type: object
+          additionalProperties: true
+
+    DiscoveryResponse:
+      type: object
+      required: [cards]
+      properties:
+        cards:
+          type: array
+          items: { $ref: '#/components/schemas/DiscoveryCard' }
+
+    DiscoveryCard:
+      type: object
+      required: [card_id, age, location, vibe_tags, prompt_answers]
+      properties:
+        card_id: { type: string }
+        age: { type: integer, minimum: 18 }
+        location: { type: string, description: Coarse city/region only }
+        vibe_tags:
+          type: array
+          items: { type: string }
+        prompt_answers:
+          type: array
+          items:
+            type: object
+            required: [question, answer]
+            properties:
+              question: { type: string }
+              answer: { type: string }
+
+    ConnectResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [intent_recorded, matched]
+        match_id:
+          type: string
+          format: uuid
+          description: Present only when status=matched
+
+    ListMatchesResponse:
+      type: object
+      required: [matches]
+      properties:
+        matches:
+          type: array
+          items: { $ref: '#/components/schemas/MatchSummary' }
+        next_cursor: { type: string }
+
+    MatchSummary:
+      type: object
+      required: [match_id, partner, current_connection_level, last_message_at]
+      properties:
+        match_id: { type: string, format: uuid }
+        partner:
+          $ref: '#/components/schemas/UserPublic'
+        current_connection_level: { type: integer, minimum: 1, maximum: 5 }
+        last_message_at: { type: string, format: date-time, nullable: true }
+
+    UserPublic:
+      type: object
+      required: [display_name, age, location]
+      properties:
+        display_name: { type: string }
+        age: { type: integer, minimum: 18 }
+        location: { type: string, description: Coarse city/region only }
+        vibe_tags:
+          type: array
+          items: { type: string }
+
+    MatchProfileResponse:
+      type: object
+      required: [match_id, partner, current_connection_level, progress, photo]
+      properties:
+        match_id: { type: string, format: uuid }
+        partner:
+          $ref: '#/components/schemas/UserPublic'
+        current_connection_level: { type: integer, minimum: 1, maximum: 5 }
+        progress:
+          type: object
+          required: [total_exchanged_counted, min_each_user_required, next_level_total_required]
+          properties:
+            total_exchanged_counted: { type: integer }
+            min_each_user_required: { type: integer }
+            next_level_total_required: { type: integer, nullable: true }
+        photo:
+          type: object
+          required: [variant, url, expires_at]
+          properties:
+            variant:
+              type: string
+              enum: [blur_heavy, blur_med, blur_light, clear]
+            url: { type: string, format: uri }
+            expires_at: { type: string, format: date-time }
+
+    SparksResponse:
+      type: object
+      required: [sparks]
+      properties:
+        sparks:
+          type: array
+          minItems: 3
+          items: { $ref: '#/components/schemas/Spark' }
+
+    Spark:
+      type: object
+      required: [id, label, suggested_message]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        suggested_message: { type: string }
+
+    ListMessagesResponse:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          items: { $ref: '#/components/schemas/Message' }
+
+    Message:
+      type: object
+      required: [id, match_id, sender_id, body, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        match_id: { type: string, format: uuid }
+        sender_id: { type: string, format: uuid }
+        client_message_id: { type: string, format: uuid, nullable: true }
+        body: { type: string }
+        created_at: { type: string, format: date-time }
+
+    SendMessageRequest:
+      type: object
+      required: [client_message_id, body]
+      properties:
+        client_message_id: { type: string, format: uuid }
+        body: { type: string, minLength: 1 }
+
+    SendMessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          $ref: '#/components/schemas/Message'
+
+    CreateUploadUrlRequest:
+      type: object
+      required: [content_type]
+      properties:
+        content_type:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+
+    CreateUploadUrlResponse:
+      type: object
+      required: [upload_url, object_key, expires_at]
+      properties:
+        upload_url: { type: string, format: uri }
+        object_key: { type: string, description: Server-generated S3 object key for the uploaded original }
+        expires_at: { type: string, format: date-time }
