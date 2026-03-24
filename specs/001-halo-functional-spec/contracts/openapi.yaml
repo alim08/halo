@@ -48,6 +48,8 @@ paths:
                 $ref: '#/components/schemas/AuthResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /v1/auth/login:
     post:
@@ -71,6 +73,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /v1/me:
     get:
@@ -137,6 +141,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /v1/discovery/{cardId}/pass:
     post:
@@ -373,6 +379,15 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     NotFound:
       description: Not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Seconds to wait before retrying
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }

@@ -1,0 +1,36 @@
+package middleware
+
+import (
+	"context"
+	"net/http"
+
+	"github.com/google/uuid"
+)
+
+type contextKey string
+
+const requestIDKey contextKey = "request_id"
+
+// RequestID is middleware that injects a unique request ID into each request context.
+// If the client sends an X-Request-ID header, it is reused; otherwise a new UUID is generated.
+// The request ID is also set in the response header.
+func RequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.Header.Get("X-Request-ID")
+		if id == "" {
+			id = uuid.New().String()
+		}
+
+		ctx := context.WithValue(r.Context(), requestIDKey, id)
+		w.Header().Set("X-Request-ID", id)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// GetRequestID extracts the request ID from the context.
+func GetRequestID(ctx context.Context) string {
+	if id, ok := ctx.Value(requestIDKey).(string); ok {
+		return id
+	}
+	return ""
+}
