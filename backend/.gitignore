@@ -1,0 +1,37 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+
+# Go workspace
+go.work
+go.work.sum
+
+# Vendor (prefer modules)
+vendor/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Env
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage.out
+coverage.html
+
+# Binary output
+bin/
