@@ -3,7 +3,7 @@
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
-**Note**: This template is filled in by the `/speckit.plan` command.
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
 ## Summary
 
@@ -31,15 +31,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- Confirm backend changes remain client-agnostic (no Next.js-coupled business logic).
-- Confirm matching/compatibility scoring logic lives only in the Go service layer (frontend receives results only).
-- Confirm API responses are JSON-only (no HTML), with safe JSON error bodies.
-- Confirm auth works via `Authorization: Bearer <token>` (cookies may be additive, not required).
-- Confirm zero-trust media rules: server-side asset gating; no client-side blur as access control; signed URLs with short expiry.
-- Confirm data minimization: discovery/feed payloads expose no PII.
-- Confirm stack constraints: Next.js App Router + TS + Tailwind; Go + chi; Postgres + Redis; S3 + CloudFront.
-- Confirm real-time chat UX where applicable: optimistic UI supported by backend acknowledgments.
-- Confirm mobile-first UX constraints where UI is changed (44px touch targets; `lucide-react` icons).
+[Gates determined based on constitution file]
 
 ## Project Structure
 
