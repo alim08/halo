@@ -30,6 +30,8 @@ Run from repo root: [README.md](README.md)
 
 ### 1) Start local services (Postgres + Redis)
 
+Have Dokcer Desktop running in background.
+
 ```bash
 docker compose up -d
 docker compose ps

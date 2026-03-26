@@ -18,18 +18,28 @@ func Middleware(jwtService *JWTService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
+			token := ""
+
+			if authHeader != "" {
+				parts := strings.SplitN(authHeader, " ", 2)
+				if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
+					httputil.Unauthorized(w, "invalid authorization header format")
+					return
+				}
+				token = parts[1]
+			} else if r.URL.Path == "/v1/ws" {
+				// Browser WebSocket clients cannot set custom Authorization headers,
+				// so allow token query param for the WS handshake endpoint only.
+				token = r.URL.Query().Get("token")
+				if token == "" {
+					httputil.Unauthorized(w, "missing authorization token")
+					return
+				}
+			} else {
 				httputil.Unauthorized(w, "missing authorization header")
 				return
 			}
 
-			parts := strings.SplitN(authHeader, " ", 2)
-			if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
-				httputil.Unauthorized(w, "invalid authorization header format")
-				return
-			}
-
-			token := parts[1]
 			claims, err := jwtService.Verify(token)
 			if err != nil {
 				httputil.Unauthorized(w, "invalid or expired token")

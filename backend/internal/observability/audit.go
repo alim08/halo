@@ -1,8 +1,11 @@
 package observability
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 
@@ -99,6 +102,31 @@ func (sw *statusWriter) Write(b []byte) (int, error) {
 		sw.written = true
 	}
 	return sw.ResponseWriter.Write(b)
+}
+
+// Hijack preserves websocket upgrades and other connection hijacking behavior
+// when middleware wraps the original ResponseWriter.
+func (sw *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hj, ok := sw.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("http.ResponseWriter does not implement http.Hijacker")
+	}
+	return hj.Hijack()
+}
+
+// Flush preserves streaming behavior for handlers that rely on http.Flusher.
+func (sw *statusWriter) Flush() {
+	if f, ok := sw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Push preserves optional HTTP/2 server push support when available.
+func (sw *statusWriter) Push(target string, opts *http.PushOptions) error {
+	if p, ok := sw.ResponseWriter.(http.Pusher); ok {
+		return p.Push(target, opts)
+	}
+	return http.ErrNotSupported
 }
 
 // methodToAction maps HTTP methods to human-readable audit actions.
