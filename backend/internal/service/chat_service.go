@@ -199,7 +199,7 @@ func BuildUserPublic(u *model.User) UserPublic {
 	vibeTags := make([]string, 0)
 	// Extract all vibe categories and add them to vibeTags.
 	if profile.Vibe != nil {
-		for key, value := range profile.Vibe {
+		for _, value := range profile.Vibe {
 			if value != "" {
 				vibeTags = append(vibeTags, value)
 			}
