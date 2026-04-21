@@ -9,6 +9,7 @@ const VIBE_OPTIONS = [
   { key: "energy_level", label: "Energy Level", options: ["Chill", "Moderate", "High Energy"] },
   { key: "life_pace", label: "Life Pace", options: ["Slow & Steady", "Balanced", "Fast-Paced"] },
   { key: "social_style", label: "Social Style", options: ["Homebody", "Ambivert", "Social Butterfly"] },
+  { key: "commitment_style", label: "Commitment Style", options: ["Casual", "Serious", "Flexible"] },
 ];
 
 const TAG_OPTIONS = [

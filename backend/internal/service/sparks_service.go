@@ -61,8 +61,8 @@ func (s *SparksService) GetSparks(ctx context.Context, matchID, userID string) (
 }
 
 type profileData struct {
-	Vibe    string `json:"vibe"`
-	Tags    []string `json:"tags"`
+	Vibe    map[string]string `json:"vibe"`
+	Tags    []string          `json:"tags"`
 	Prompts []struct {
 		Question string `json:"question"`
 		Answer   string `json:"answer"`
@@ -86,14 +86,21 @@ func generateSparks(viewer, partner *model.User) []Spark {
 	sparks := make([]Spark, 0, 5)
 	id := 1
 
-	// 1. Shared vibe spark.
-	if vp.Vibe != "" && vp.Vibe == pp.Vibe {
-		sparks = append(sparks, Spark{
-			ID:               fmt.Sprintf("spark_%d", id),
-			Label:            fmt.Sprintf("Shared Vibe: %s", vp.Vibe),
-			SuggestedMessage: fmt.Sprintf("I saw we both vibe with %s — what does that mean to you?", vp.Vibe),
-		})
-		id++
+	// 1. Shared vibe sparks (check all vibe categories).
+	if vp.Vibe != nil && pp.Vibe != nil {
+		for key, viewerValue := range vp.Vibe {
+			if partnerValue, ok := pp.Vibe[key]; ok && viewerValue != "" && partnerValue == viewerValue {
+				sparks = append(sparks, Spark{
+					ID:               fmt.Sprintf("spark_%d", id),
+					Label:            fmt.Sprintf("Shared %s: %s", formatVibeKey(key), viewerValue),
+					SuggestedMessage: fmt.Sprintf("I noticed we're both %s — what does that mean to you?", viewerValue),
+				})
+				id++
+				if len(sparks) >= 3 {
+					break
+				}
+			}
+		}
 	}
 
 	// 2. Shared tag sparks.
@@ -153,4 +160,15 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen-1] + "…"
+}
+
+// formatVibeKey converts snake_case keys to Title Case (e.g., "energy_level" -> "Energy Level").
+func formatVibeKey(key string) string {
+	words := strings.Split(key, "_")
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
 }
