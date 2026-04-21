@@ -42,7 +42,7 @@ func ValidateBirthdate(birthdate *time.Time) error {
 
 // onboardingRequiredFields are the profile_data keys that must be present
 // for a user to be considered fully onboarded.
-var onboardingRequiredFields = []string{"vibe", "tags", "prompts"}
+var onboardingRequiredFields = []string{"gender", "sexual_profile", "vibe", "tags", "prompts"}
 
 // CheckOnboardingComplete determines whether a user has completed onboarding
 // based on the required fields in their profile_data, plus birthdate and location.

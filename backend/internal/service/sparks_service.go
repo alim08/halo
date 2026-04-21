@@ -61,9 +61,11 @@ func (s *SparksService) GetSparks(ctx context.Context, matchID, userID string) (
 }
 
 type profileData struct {
-	Vibe    map[string]string `json:"vibe"`
-	Tags    []string          `json:"tags"`
-	Prompts []struct {
+	Gender        string            `json:"gender"`
+	SexualProfile string            `json:"sexual_profile"`
+	Vibe          map[string]string `json:"vibe"`
+	Tags          []string          `json:"tags"`
+	Prompts       []struct {
 		Question string `json:"question"`
 		Answer   string `json:"answer"`
 	} `json:"prompts"`
@@ -86,7 +88,17 @@ func generateSparks(viewer, partner *model.User) []Spark {
 	sparks := make([]Spark, 0, 5)
 	id := 1
 
-	// 1. Shared vibe sparks (check all vibe categories).
+	// 1. Shared sexual profile spark.
+	if vp.SexualProfile != "" && vp.SexualProfile == pp.SexualProfile {
+		sparks = append(sparks, Spark{
+			ID:               fmt.Sprintf("spark_%d", id),
+			Label:            fmt.Sprintf("We're both %s", vp.SexualProfile),
+			SuggestedMessage: fmt.Sprintf("I love that we're both %s — what's something important to you in that context?", vp.SexualProfile),
+		})
+		id++
+	}
+
+	// 2. Shared vibe sparks (check all vibe categories).
 	if vp.Vibe != nil && pp.Vibe != nil {
 		for key, viewerValue := range vp.Vibe {
 			if partnerValue, ok := pp.Vibe[key]; ok && viewerValue != "" && partnerValue == viewerValue {
@@ -103,7 +115,7 @@ func generateSparks(viewer, partner *model.User) []Spark {
 		}
 	}
 
-	// 2. Shared tag sparks.
+	// 3. Shared tag sparks.
 	viewerTags := make(map[string]struct{}, len(vp.Tags))
 	for _, t := range vp.Tags {
 		viewerTags[t] = struct{}{}
@@ -122,7 +134,7 @@ func generateSparks(viewer, partner *model.User) []Spark {
 		}
 	}
 
-	// 3. Partner prompt-based sparks.
+	// 4. Partner prompt-based sparks.
 	for _, p := range pp.Prompts {
 		if p.Answer != "" && len(sparks) < 5 {
 			sparks = append(sparks, Spark{
@@ -134,7 +146,7 @@ func generateSparks(viewer, partner *model.User) []Spark {
 		}
 	}
 
-	// 4. Fallback sparks to ensure minimum of 3.
+	// 5. Fallback sparks to ensure minimum of 3.
 	fallbacks := []Spark{
 		{Label: "Deep question", SuggestedMessage: "What's something you're passionate about that most people don't know?"},
 		{Label: "Adventure starter", SuggestedMessage: "If we could go anywhere right now, where would you take me?"},

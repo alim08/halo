@@ -7,6 +7,8 @@ import { api, type MeResponse } from "@/lib/api";
 type OnboardingState = {
   birthdate: string;
   coarse_location: string;
+  gender: string;
+  sexual_profile: string;
   vibe: Record<string, string>;
   tags: Array<{ type: string; label: string }>;
   prompts: Array<{ prompt_id: string; question: string; answer: string }>;
@@ -15,6 +17,8 @@ type OnboardingState = {
 const INITIAL_STATE: OnboardingState = {
   birthdate: "",
   coarse_location: "",
+  gender: "",
+  sexual_profile: "",
   vibe: {},
   tags: [],
   prompts: [],
@@ -51,6 +55,8 @@ export function useOnboarding() {
         const restored: OnboardingState = {
           birthdate: (pd.birthdate as string) || "",
           coarse_location: me.coarse_location || "",
+          gender: (pd.gender as string) || "",
+          sexual_profile: (pd.sexual_profile as string) || "",
           vibe: (pd.vibe as Record<string, string>) || {},
           tags:
             (pd.tags as Array<{ type: string; label: string }>) || [],
@@ -99,8 +105,10 @@ export function useOnboarding() {
           payload.coarse_location = merged.coarse_location;
         }
 
-        // Package vibe/tags/prompts into profile_data.
+        // Package gender/sexual_profile/vibe/tags/prompts into profile_data.
         const profileData: Record<string, unknown> = {};
+        if (merged.gender) profileData.gender = merged.gender;
+        if (merged.sexual_profile) profileData.sexual_profile = merged.sexual_profile;
         if (Object.keys(merged.vibe).length > 0) profileData.vibe = merged.vibe;
         if (merged.tags.length > 0) profileData.tags = merged.tags;
         if (merged.prompts.length > 0) profileData.prompts = merged.prompts;
@@ -152,15 +160,16 @@ export function useOnboarding() {
     nextStep,
     prevStep,
     saveProgress,
-    totalSteps: 4,
+    totalSteps: 5,
   };
 }
 
 /** Determine the first incomplete onboarding step. */
 function computeResumeStep(s: OnboardingState): number {
   if (!s.birthdate || !s.coarse_location) return 0;
-  if (Object.keys(s.vibe).length === 0) return 1;
-  if (s.tags.length === 0) return 2;
-  if (s.prompts.length === 0) return 3;
-  return 3; // all filled — show last step for final submit
+  if (!s.gender || !s.sexual_profile) return 1;
+  if (Object.keys(s.vibe).length === 0) return 2;
+  if (s.tags.length === 0) return 3;
+  if (s.prompts.length === 0) return 4;
+  return 4; // all filled — show last step for final submit
 }

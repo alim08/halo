@@ -87,6 +87,18 @@ export function OnboardingWizard() {
       )}
 
       {step === 1 && (
+        <GenderStep
+          gender={state.gender}
+          sexual_profile={state.sexual_profile}
+          onNext={(gender, sexual_profile) =>
+            nextStep({ gender, sexual_profile })
+          }
+          onBack={prevStep}
+          saving={saving}
+        />
+      )}
+
+      {step === 2 && (
         <VibeStep
           vibe={state.vibe}
           onNext={(vibe) => nextStep({ vibe })}
@@ -95,7 +107,7 @@ export function OnboardingWizard() {
         />
       )}
 
-      {step === 2 && (
+      {step === 3 && (
         <TagsStep
           selected={state.tags}
           onNext={(tags) => nextStep({ tags })}
@@ -104,7 +116,7 @@ export function OnboardingWizard() {
         />
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <PromptsStep
           prompts={state.prompts}
           onNext={(prompts) => nextStep({ prompts })}
@@ -205,7 +217,106 @@ function BasicsStep({
   );
 }
 
-// ── Step 1: Vibe ─────────────────────────────────────────
+// ── Step 1: Gender & Sexual Profile ──────────────────
+
+function GenderStep({
+  gender,
+  sexual_profile,
+  onNext,
+  onBack,
+  saving,
+}: {
+  gender: string;
+  sexual_profile: string;
+  onNext: (gender: string, sexual_profile: string) => void;
+  onBack: () => void;
+  saving: boolean;
+}) {
+  const [genderValue, setGenderValue] = useState(gender);
+  const [sexualProfileValue, setSexualProfileValue] = useState(sexual_profile);
+
+  const genderOptions = ["Man", "Woman", "Non-binary", "Prefer not to say"];
+  const sexualProfileOptions = [
+    "Straight",
+    "Gay",
+    "Lesbian",
+    "Bisexual",
+    "Asexual",
+    "Demisexual",
+    "Prefer not to say",
+  ];
+
+  function handleNext() {
+    onNext(genderValue, sexualProfileValue);
+  }
+
+  const allSelected = genderValue && sexualProfileValue;
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">Tell us about yourself</h2>
+      <p className="text-sm text-gray-500">
+        This helps us make better matches.
+      </p>
+
+      <div>
+        <p className="mb-2 text-sm font-medium">Gender</p>
+        <div className="flex flex-wrap gap-2">
+          {genderOptions.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => setGenderValue(opt)}
+              className={`rounded-full px-4 py-2 min-h-touch text-sm border transition-colors ${
+                genderValue === opt
+                  ? "border-halo-primary bg-halo-primary text-white"
+                  : "border-gray-300 hover:border-halo-primary"
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-2 text-sm font-medium">Sexual Profile</p>
+        <div className="flex flex-wrap gap-2">
+          {sexualProfileOptions.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => setSexualProfileValue(opt)}
+              className={`rounded-full px-4 py-2 min-h-touch text-sm border transition-colors ${
+                sexualProfileValue === opt
+                  ? "border-halo-primary bg-halo-primary text-white"
+                  : "border-gray-300 hover:border-halo-primary"
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <button
+          onClick={onBack}
+          className="flex-1 rounded-md border border-gray-300 px-4 py-3 min-h-touch font-medium hover:bg-gray-50"
+        >
+          Back
+        </button>
+        <button
+          onClick={handleNext}
+          disabled={!allSelected || saving}
+          className="flex-1 rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Continue"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 2: Vibe ─────────────────────────────────────────
 
 function VibeStep({
   vibe,
@@ -273,7 +384,7 @@ function VibeStep({
   );
 }
 
-// ── Step 2: Tags ─────────────────────────────────────────
+// ── Step 3: Tags ─────────────────────────────────────────
 
 function TagsStep({
   selected,
@@ -344,7 +455,7 @@ function TagsStep({
   );
 }
 
-// ── Step 3: Prompts ──────────────────────────────────────
+// ── Step 4: Prompts ──────────────────────────────────────
 
 function PromptsStep({
   prompts,

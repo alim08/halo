@@ -183,9 +183,11 @@ func BuildUserPublic(u *model.User) UserPublic {
 
 	// Extract display_name and vibe_tags from profile_data.
 	var profile struct {
-		DisplayName string            `json:"display_name"`
-		Vibe        map[string]string `json:"vibe"`
-		Tags        []string          `json:"tags"`
+		DisplayName   string            `json:"display_name"`
+		Gender        string            `json:"gender"`
+		SexualProfile string            `json:"sexual_profile"`
+		Vibe          map[string]string `json:"vibe"`
+		Tags          []string          `json:"tags"`
 	}
 	if u.ProfileData != nil {
 		_ = json.Unmarshal(u.ProfileData, &profile)
@@ -197,6 +199,13 @@ func BuildUserPublic(u *model.User) UserPublic {
 	}
 
 	vibeTags := make([]string, 0)
+	// Add gender and sexual profile to vibeTags.
+	if profile.Gender != "" {
+		vibeTags = append(vibeTags, profile.Gender)
+	}
+	if profile.SexualProfile != "" {
+		vibeTags = append(vibeTags, profile.SexualProfile)
+	}
 	// Extract all vibe categories and add them to vibeTags.
 	if profile.Vibe != nil {
 		for _, value := range profile.Vibe {
