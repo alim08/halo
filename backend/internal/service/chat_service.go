@@ -183,11 +183,14 @@ func BuildUserPublic(u *model.User) UserPublic {
 
 	// Extract display_name and vibe_tags from profile_data.
 	var profile struct {
-		DisplayName   string            `json:"display_name"`
-		Gender        string            `json:"gender"`
-		SexualProfile string            `json:"sexual_profile"`
-		Vibe          map[string]string `json:"vibe"`
-		Tags          []string          `json:"tags"`
+		DisplayName      string            `json:"display_name"`
+		Gender           string            `json:"gender"`
+		SexualProfile    string            `json:"sexual_profile"`
+		InterestedIn     []string          `json:"interested_in"`
+		Vibe             map[string]string `json:"vibe"`
+		LifestyleHabits  map[string]string `json:"lifestyle_habits"`
+		IntimacyQuestion map[string]string `json:"intimacy_questions"`
+		Interests        []string          `json:"interests"`
 	}
 	if u.ProfileData != nil {
 		_ = json.Unmarshal(u.ProfileData, &profile)
@@ -206,6 +209,8 @@ func BuildUserPublic(u *model.User) UserPublic {
 	if profile.SexualProfile != "" {
 		vibeTags = append(vibeTags, profile.SexualProfile)
 	}
+	// Add interested_in preferences to vibeTags.
+	vibeTags = append(vibeTags, profile.InterestedIn...)
 	// Extract all vibe categories and add them to vibeTags.
 	if profile.Vibe != nil {
 		for _, value := range profile.Vibe {
@@ -214,7 +219,24 @@ func BuildUserPublic(u *model.User) UserPublic {
 			}
 		}
 	}
-	vibeTags = append(vibeTags, profile.Tags...)
+	// Add lifestyle habits to vibeTags.
+	if profile.LifestyleHabits != nil {
+		for _, value := range profile.LifestyleHabits {
+			if value != "" {
+				vibeTags = append(vibeTags, value)
+			}
+		}
+	}
+	// Add intimacy questions to vibeTags.
+	if profile.IntimacyQuestion != nil {
+		for _, value := range profile.IntimacyQuestion {
+			if value != "" {
+				vibeTags = append(vibeTags, value)
+			}
+		}
+	}
+	// Add interests to vibeTags.
+	vibeTags = append(vibeTags, profile.Interests...)
 	pub.VibeTags = vibeTags
 
 	return pub

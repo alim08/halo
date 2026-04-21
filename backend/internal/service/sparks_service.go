@@ -61,11 +61,14 @@ func (s *SparksService) GetSparks(ctx context.Context, matchID, userID string) (
 }
 
 type profileData struct {
-	Gender        string            `json:"gender"`
-	SexualProfile string            `json:"sexual_profile"`
-	Vibe          map[string]string `json:"vibe"`
-	Tags          []string          `json:"tags"`
-	Prompts       []struct {
+	Gender             string            `json:"gender"`
+	SexualProfile      string            `json:"sexual_profile"`
+	InterestedIn       []string          `json:"interested_in"`
+	Vibe               map[string]string `json:"vibe"`
+	LifestyleHabits    map[string]string `json:"lifestyle_habits"`
+	IntimacyQuestions  map[string]string `json:"intimacy_questions"`
+	Interests          []string          `json:"interests"`
+	Prompts            []struct {
 		Question string `json:"question"`
 		Answer   string `json:"answer"`
 	} `json:"prompts"`
@@ -115,17 +118,17 @@ func generateSparks(viewer, partner *model.User) []Spark {
 		}
 	}
 
-	// 3. Shared tag sparks.
-	viewerTags := make(map[string]struct{}, len(vp.Tags))
-	for _, t := range vp.Tags {
-		viewerTags[t] = struct{}{}
+	// 3. Shared interests sparks.
+	viewerInterests := make(map[string]struct{}, len(vp.Interests))
+	for _, i := range vp.Interests {
+		viewerInterests[i] = struct{}{}
 	}
-	for _, t := range pp.Tags {
-		if _, ok := viewerTags[t]; ok {
+	for _, i := range pp.Interests {
+		if _, ok := viewerInterests[i]; ok {
 			sparks = append(sparks, Spark{
 				ID:               fmt.Sprintf("spark_%d", id),
-				Label:            fmt.Sprintf("You both like: %s", t),
-				SuggestedMessage: fmt.Sprintf("I noticed we both enjoy %s — tell me more about that!", strings.ToLower(t)),
+				Label:            fmt.Sprintf("You both enjoy: %s", i),
+				SuggestedMessage: fmt.Sprintf("I noticed we both enjoy %s — tell me more about that!", strings.ToLower(i)),
 			})
 			id++
 			if len(sparks) >= 3 {

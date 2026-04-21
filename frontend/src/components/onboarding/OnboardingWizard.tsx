@@ -12,19 +12,81 @@ const VIBE_OPTIONS = [
   { key: "commitment_style", label: "Commitment Style", options: ["Casual", "Serious", "Flexible"] },
 ];
 
-const TAG_OPTIONS = [
-  { type: "value", label: "Honesty" },
-  { type: "value", label: "Loyalty" },
-  { type: "value", label: "Kindness" },
-  { type: "value", label: "Ambition" },
-  { type: "value", label: "Humor" },
-  { type: "value", label: "Creativity" },
-  { type: "interest", label: "Travel" },
-  { type: "interest", label: "Cooking" },
-  { type: "interest", label: "Fitness" },
-  { type: "interest", label: "Music" },
-  { type: "interest", label: "Reading" },
-  { type: "interest", label: "Gaming" },
+const LIFESTYLE_OPTIONS = [
+  {
+    category: "Drinking",
+    key: "drinking",
+    options: ["Non-drinker", "Socially", "Regularly", "Often"],
+  },
+  {
+    category: "Smoking",
+    key: "smoking",
+    options: ["Non-smoker", "Socially", "Regularly"],
+  },
+  {
+    category: "Working Out",
+    key: "working_out",
+    options: ["Never", "1-2x/week", "3-4x/week", "Daily"],
+  },
+  {
+    category: "Pets",
+    key: "pets",
+    options: ["Don't have", "Have dog", "Have cat", "Have other", "Want pets"],
+  },
+];
+
+const INTIMACY_OPTIONS = [
+  {
+    id: "communication_style",
+    label: "Communication Style",
+    options: ["Direct", "Thoughtful", "Spontaneous", "Balanced"],
+  },
+  {
+    id: "love_language",
+    label: "Love Language",
+    options: ["Words of Affirmation", "Acts of Service", "Quality Time", "Physical Touch", "Gifts"],
+  },
+  {
+    id: "affection_style",
+    label: "Affection Style",
+    options: ["Reserved", "Moderate", "Very Affectionate"],
+  },
+  {
+    id: "relationship_pace",
+    label: "Relationship Pace",
+    options: ["Take it slow", "Go with the flow", "Move quickly"],
+  },
+];
+
+const INTERESTS_OPTIONS = [
+  {
+    category: "Sports & Fitness",
+    interests: ["Gym", "Yoga", "Running", "Team Sports", "Hiking", "Swimming"],
+  },
+  {
+    category: "Creative & Arts",
+    interests: ["Painting", "Music", "Photography", "Writing", "Dancing", "Theater"],
+  },
+  {
+    category: "Culture & Learning",
+    interests: ["Museums", "History", "Languages", "Philosophy", "Science", "Tech"],
+  },
+  {
+    category: "Food & Drink",
+    interests: ["Cooking", "Foodie", "Wine", "Coffee", "Baking", "Vegan/Vegetarian"],
+  },
+  {
+    category: "Entertainment",
+    interests: ["Movies", "Gaming", "Books", "Podcasts", "TV Shows", "Comedy"],
+  },
+  {
+    category: "Travel & Adventure",
+    interests: ["Travel", "Camping", "Beach", "Mountains", "Road trips", "Budget travel"],
+  },
+  {
+    category: "Community",
+    interests: ["Volunteering", "Activism", "Community Events", "Networking", "Mentoring"],
+  },
 ];
 
 const PROMPT_QUESTIONS = [
@@ -99,6 +161,17 @@ export function OnboardingWizard() {
       )}
 
       {step === 2 && (
+        <InterestedInStep
+          interested_in={state.interested_in}
+          onNext={(interested_in) =>
+            nextStep({ interested_in })
+          }
+          onBack={prevStep}
+          saving={saving}
+        />
+      )}
+
+      {step === 3 && (
         <VibeStep
           vibe={state.vibe}
           onNext={(vibe) => nextStep({ vibe })}
@@ -107,16 +180,38 @@ export function OnboardingWizard() {
         />
       )}
 
-      {step === 3 && (
-        <TagsStep
-          selected={state.tags}
-          onNext={(tags) => nextStep({ tags })}
+      {step === 4 && (
+        <LifestyleHabitsStep
+          lifestyle={state.lifestyle_habits}
+          onNext={(lifestyle_habits) =>
+            nextStep({ lifestyle_habits })
+          }
           onBack={prevStep}
           saving={saving}
         />
       )}
 
-      {step === 4 && (
+      {step === 5 && (
+        <IntimacyQuestionsStep
+          intimacy={state.intimacy_questions}
+          onNext={(intimacy_questions) =>
+            nextStep({ intimacy_questions })
+          }
+          onBack={prevStep}
+          saving={saving}
+        />
+      )}
+
+      {step === 6 && (
+        <InterestsStep
+          selected={state.interests}
+          onNext={(interests) => nextStep({ interests })}
+          onBack={prevStep}
+          saving={saving}
+        />
+      )}
+
+      {step === 7 && (
         <PromptsStep
           prompts={state.prompts}
           onNext={(prompts) => nextStep({ prompts })}
@@ -316,7 +411,79 @@ function GenderStep({
   );
 }
 
-// ── Step 2: Vibe ─────────────────────────────────────────
+// ── Step 2: Who are you interested in? ──────────────────
+
+function InterestedInStep({
+  interested_in,
+  onNext,
+  onBack,
+  saving,
+}: {
+  interested_in: string[];
+  onNext: (interested_in: string[]) => void;
+  onBack: () => void;
+  saving: boolean;
+}) {
+  const [selected, setSelected] = useState<string[]>(interested_in);
+
+  const options = ["Man", "Woman", "Non-binary"];
+
+  function toggle(option: string) {
+    setSelected((prev) => {
+      if (prev.includes(option)) {
+        return prev.filter((o) => o !== option);
+      }
+      return [...prev, option];
+    });
+  }
+
+  function handleNext() {
+    onNext(selected);
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">Who are you interested in seeing?</h2>
+      <p className="text-sm text-gray-500">
+        Select all that apply. You can change this later.
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => (
+          <button
+            key={option}
+            onClick={() => toggle(option)}
+            className={`rounded-full px-4 py-2 min-h-touch text-sm border transition-colors ${
+              selected.includes(option)
+                ? "border-halo-primary bg-halo-primary text-white"
+                : "border-gray-300 hover:border-halo-primary"
+            }`}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-3">
+        <button
+          onClick={onBack}
+          className="flex-1 rounded-md border border-gray-300 px-4 py-3 min-h-touch font-medium hover:bg-gray-50"
+        >
+          Back
+        </button>
+        <button
+          onClick={handleNext}
+          disabled={selected.length === 0 || saving}
+          className="flex-1 rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Continue"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 3: Vibe ─────────────────────────────────────────
 
 function VibeStep({
   vibe,
@@ -384,57 +551,58 @@ function VibeStep({
   );
 }
 
-// ── Step 3: Tags ─────────────────────────────────────────
+// ── Step 4: Tags ─────────────────────────────────────────
 
-function TagsStep({
-  selected,
+// ── Step 4: Lifestyle Habits ────────────────────────────
+
+function LifestyleHabitsStep({
+  lifestyle = {},
   onNext,
   onBack,
   saving,
 }: {
-  selected: Array<{ type: string; label: string }>;
-  onNext: (tags: Array<{ type: string; label: string }>) => void;
+  lifestyle?: Record<string, string>;
+  onNext: (lifestyle: Record<string, string>) => void;
   onBack: () => void;
   saving: boolean;
 }) {
-  const [tags, setTags] = useState(selected);
+  const [selected, setSelected] = useState<Record<string, string>>(lifestyle);
 
-  function toggle(tag: { type: string; label: string }) {
-    setTags((prev) => {
-      const exists = prev.some((t) => t.label === tag.label);
-      if (exists) return prev.filter((t) => t.label !== tag.label);
-      if (prev.length >= 6) return prev; // max 6 tags
-      return [...prev, tag];
-    });
+  function handleNext() {
+    onNext(selected);
   }
 
+  const allSelected = LIFESTYLE_OPTIONS.every((opt) => selected[opt.key]);
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Your values & interests</h2>
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold">Your lifestyle</h2>
       <p className="text-sm text-gray-500">
-        Pick up to 6 that matter most to you.
+        Help us understand your habits and preferences.
       </p>
 
-      <div className="flex flex-wrap gap-2">
-        {TAG_OPTIONS.map((tag) => {
-          const isSelected = tags.some((t) => t.label === tag.label);
-          return (
-            <button
-              key={tag.label}
-              onClick={() => toggle(tag)}
-              className={`rounded-full px-4 py-2 min-h-touch text-sm border transition-colors ${
-                isSelected
-                  ? "border-halo-primary bg-halo-primary text-white"
-                  : "border-gray-300 hover:border-halo-primary"
-              }`}
-            >
-              {tag.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <p className="text-xs text-gray-400">{tags.length}/6 selected</p>
+      {LIFESTYLE_OPTIONS.map((group) => (
+        <div key={group.key} className="space-y-2">
+          <p className="text-sm font-medium text-gray-700">{group.category}</p>
+          <div className="flex flex-wrap gap-2">
+            {group.options.map((opt) => (
+              <button
+                key={opt}
+                onClick={() =>
+                  setSelected((s) => ({ ...s, [group.key]: opt }))
+                }
+                className={`rounded-full px-3 py-1.5 text-xs border transition-colors ${
+                  selected[group.key] === opt
+                    ? "border-halo-primary bg-halo-primary text-white"
+                    : "border-gray-300 hover:border-halo-primary"
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
 
       <div className="flex gap-3">
         <button
@@ -444,8 +612,8 @@ function TagsStep({
           Back
         </button>
         <button
-          onClick={() => onNext(tags)}
-          disabled={tags.length === 0 || saving}
+          onClick={handleNext}
+          disabled={!allSelected || saving}
           className="flex-1 rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
         >
           {saving ? "Saving…" : "Continue"}
@@ -455,7 +623,153 @@ function TagsStep({
   );
 }
 
-// ── Step 4: Prompts ──────────────────────────────────────
+// ── Step 5: Intimacy Questions ──────────────────────────
+
+function IntimacyQuestionsStep({
+  intimacy,
+  onNext,
+  onBack,
+  saving,
+}: {
+  intimacy: Record<string, string>;
+  onNext: (intimacy: Record<string, string>) => void;
+  onBack: () => void;
+  saving: boolean;
+}) {
+  const [selected, setSelected] = useState<Record<string, string>>(intimacy);
+
+  function handleNext() {
+    onNext(selected);
+  }
+
+  const allSelected = INTIMACY_OPTIONS.every((opt) => selected[opt.id]);
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold">Intimacy & connection</h2>
+      <p className="text-sm text-gray-500">
+        Choose what resonates with you most.
+      </p>
+
+      {INTIMACY_OPTIONS.map((group) => (
+        <div key={group.id} className="space-y-2">
+          <p className="text-sm font-medium text-gray-700">{group.label}</p>
+          <div className="flex flex-wrap gap-2">
+            {group.options.map((opt) => (
+              <button
+                key={opt}
+                onClick={() =>
+                  setSelected((s) => ({ ...s, [group.id]: opt }))
+                }
+                className={`rounded-full px-3 py-1.5 text-xs border transition-colors ${
+                  selected[group.id] === opt
+                    ? "border-halo-primary bg-halo-primary text-white"
+                    : "border-gray-300 hover:border-halo-primary"
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <div className="flex gap-3">
+        <button
+          onClick={onBack}
+          className="flex-1 rounded-md border border-gray-300 px-4 py-3 min-h-touch font-medium hover:bg-gray-50"
+        >
+          Back
+        </button>
+        <button
+          onClick={handleNext}
+          disabled={!allSelected || saving}
+          className="flex-1 rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Continue"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 6: Interests ───────────────────────────────────
+
+function InterestsStep({
+  selected,
+  onNext,
+  onBack,
+  saving,
+}: {
+  selected: string[];
+  onNext: (interests: string[]) => void;
+  onBack: () => void;
+  saving: boolean;
+}) {
+  const [interests, setInterests] = useState(selected);
+
+  function toggle(interest: string) {
+    setInterests((prev) => {
+      const exists = prev.includes(interest);
+      if (exists) return prev.filter((i) => i !== interest);
+      if (prev.length >= 12) return prev; // max 12 interests
+      return [...prev, interest];
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold">Your interests</h2>
+      <p className="text-sm text-gray-500">
+        Pick up to 12 that describe you. Choose from categories below.
+      </p>
+
+      {INTERESTS_OPTIONS.map((category) => (
+        <div key={category.category} className="space-y-2">
+          <p className="text-sm font-medium text-gray-700">{category.category}</p>
+          <div className="flex flex-wrap gap-2">
+            {category.interests.map((interest) => {
+              const isSelected = interests.includes(interest);
+              return (
+                <button
+                  key={interest}
+                  onClick={() => toggle(interest)}
+                  className={`rounded-full px-3 py-1.5 text-xs border transition-colors ${
+                    isSelected
+                      ? "border-halo-primary bg-halo-primary text-white"
+                      : "border-gray-300 hover:border-halo-primary"
+                  }`}
+                >
+                  {interest}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      <p className="text-xs text-gray-400">{interests.length}/12 selected</p>
+
+      <div className="flex gap-3">
+        <button
+          onClick={onBack}
+          className="flex-1 rounded-md border border-gray-300 px-4 py-3 min-h-touch font-medium hover:bg-gray-50"
+        >
+          Back
+        </button>
+        <button
+          onClick={() => onNext(interests)}
+          disabled={interests.length === 0 || saving}
+          className="flex-1 rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Continue"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 7: Prompts ──────────────────────────────────────
 
 function PromptsStep({
   prompts,
