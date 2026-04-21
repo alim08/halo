@@ -38,7 +38,20 @@ export default function ChatPage() {
     hasMore,
   } = useChat(matchId, me?.id ?? "");
 
-  const { profile } = useMatchProfile(matchId, me?.id ?? "");
+  const { profile, refreshProfile } = useMatchProfile(matchId, me?.id ?? "");
+
+  async function handleSendMessage() {
+    const sent = await sendMessage();
+    if (!sent) return;
+
+    refreshProfile();
+
+    // The level update happens server-side during send, so a short follow-up
+    // refresh keeps the header/progress bar in sync even if WS delivery lags.
+    window.setTimeout(() => {
+      refreshProfile();
+    }, 600);
+  }
 
   if (!me) {
     return (
@@ -124,7 +137,7 @@ export default function ChatPage() {
       <MessageComposer
         value={composerText}
         onChange={setComposerText}
-        onSend={sendMessage}
+        onSend={handleSendMessage}
       />
     </main>
   );
