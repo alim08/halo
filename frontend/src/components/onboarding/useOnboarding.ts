@@ -11,8 +11,9 @@ type OnboardingState = {
   sexual_profile: string;
   interested_in: string[];
   vibe: Record<string, string>;
+  relationship_intentions: string[];
   lifestyle_habits: Record<string, string>;
-  intimacy_questions: Record<string, string>;
+  connection_style: Record<string, string>;
   interests: string[];
   prompts: Array<{ prompt_id: string; question: string; answer: string }>;
 };
@@ -24,8 +25,9 @@ const INITIAL_STATE: OnboardingState = {
   sexual_profile: "",
   interested_in: [],
   vibe: {},
+  relationship_intentions: [],
   lifestyle_habits: {},
-  intimacy_questions: {},
+  connection_style: {},
   interests: [],
   prompts: [],
 };
@@ -65,8 +67,9 @@ export function useOnboarding() {
           sexual_profile: (pd.sexual_profile as string) || "",
           interested_in: (pd.interested_in as string[]) || [],
           vibe: (pd.vibe as Record<string, string>) || {},
+          relationship_intentions: (pd.relationship_intentions as string[]) || [],
           lifestyle_habits: (pd.lifestyle_habits as Record<string, string>) || {},
-          intimacy_questions: (pd.intimacy_questions as Record<string, string>) || {},
+          connection_style: (pd.connection_style as Record<string, string>) || {},
           interests: (pd.interests as string[]) || [],
           prompts:
             (pd.prompts as Array<{
@@ -113,14 +116,15 @@ export function useOnboarding() {
           payload.coarse_location = merged.coarse_location;
         }
 
-        // Package gender/sexual_profile/interested_in/vibe/lifestyle_habits/intimacy_questions/interests/prompts into profile_data.
+        // Package gender/sexual_profile/interested_in/vibe/relationship_intentions/lifestyle_habits/connection_style/interests/prompts into profile_data.
         const profileData: Record<string, unknown> = {};
         if (merged.gender) profileData.gender = merged.gender;
         if (merged.sexual_profile) profileData.sexual_profile = merged.sexual_profile;
         if (merged.interested_in.length > 0) profileData.interested_in = merged.interested_in;
         if (Object.keys(merged.vibe).length > 0) profileData.vibe = merged.vibe;
+        if (merged.relationship_intentions.length > 0) profileData.relationship_intentions = merged.relationship_intentions;
         if (Object.keys(merged.lifestyle_habits).length > 0) profileData.lifestyle_habits = merged.lifestyle_habits;
-        if (Object.keys(merged.intimacy_questions).length > 0) profileData.intimacy_questions = merged.intimacy_questions;
+        if (Object.keys(merged.connection_style).length > 0) profileData.connection_style = merged.connection_style;
         if (merged.interests.length > 0) profileData.interests = merged.interests;
         if (merged.prompts.length > 0) profileData.prompts = merged.prompts;
         if (Object.keys(profileData).length > 0) {
@@ -178,11 +182,11 @@ export function useOnboarding() {
 /** Determine the first incomplete onboarding step. */
 function computeResumeStep(s: OnboardingState): number {
   if (!s.birthdate || !s.coarse_location) return 0;
-  if (!s.gender || !s.sexual_profile) return 1;
-  if (s.interested_in.length === 0) return 2;
-  if (Object.keys(s.vibe).length === 0) return 3;
+  if (!s.gender || !s.sexual_profile || s.interested_in.length === 0) return 1;
+  if (Object.keys(s.vibe).length === 0) return 2;
+  if (s.relationship_intentions.length === 0) return 3;
   if (Object.keys(s.lifestyle_habits).length === 0) return 4;
-  if (Object.keys(s.intimacy_questions).length === 0) return 5;
+  if (Object.keys(s.connection_style).length === 0) return 5;
   if (s.interests.length === 0) return 6;
   if (s.prompts.length === 0) return 7;
   return 7; // all filled — show last step for final submit

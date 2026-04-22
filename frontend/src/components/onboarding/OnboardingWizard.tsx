@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useOnboarding } from "./useOnboarding";
 
 // ── Step definitions ─────────────────────────────────────
 
-const VIBE_OPTIONS = [
+const PERSONALITY_VIBE_OPTIONS = [
   { key: "energy_level", label: "Energy Level", options: ["Chill", "Moderate", "High Energy"] },
   { key: "life_pace", label: "Life Pace", options: ["Slow & Steady", "Balanced", "Fast-Paced"] },
   { key: "social_style", label: "Social Style", options: ["Homebody", "Ambivert", "Social Butterfly"] },
-  { key: "commitment_style", label: "Commitment Style", options: ["Casual", "Serious", "Flexible"] },
+  { key: "dating_energy", label: "Dating Energy", options: ["Casual & exploring", "Looking actively", "Very intentional"] },
+];
+
+const RELATIONSHIP_INTENTIONS_OPTIONS = [
+  "Long-term partner",
+  "Casual dating",
+  "Short-term connection",
+  "Open to exploring",
+  "Marriage-minded",
+  "Still figuring it out",
 ];
 
 const LIFESTYLE_OPTIONS = [
@@ -24,8 +33,8 @@ const LIFESTYLE_OPTIONS = [
     options: ["Non-smoker", "Socially", "Regularly"],
   },
   {
-    category: "Working Out",
-    key: "working_out",
+    category: "Fitness Habits",
+    key: "fitness",
     options: ["Never", "1-2x/week", "3-4x/week", "Daily"],
   },
   {
@@ -33,9 +42,24 @@ const LIFESTYLE_OPTIONS = [
     key: "pets",
     options: ["Don't have", "Have dog", "Have cat", "Have other", "Want pets"],
   },
+  {
+    category: "Sleep Schedule",
+    key: "sleep_schedule",
+    options: ["Early bird", "Night owl", "Flexible"],
+  },
+  {
+    category: "Diet",
+    key: "diet",
+    options: ["Omnivore", "Vegetarian", "Vegan", "Pescatarian"],
+  },
+  {
+    category: "Wants Kids",
+    key: "wants_kids",
+    options: ["Yes", "No", "Maybe", "Already have kids", "Prefer not to say"],
+  },
 ];
 
-const INTIMACY_OPTIONS = [
+const CONNECTION_STYLE_OPTIONS = [
   {
     id: "communication_style",
     label: "Communication Style",
@@ -47,9 +71,19 @@ const INTIMACY_OPTIONS = [
     options: ["Words of Affirmation", "Acts of Service", "Quality Time", "Physical Touch", "Gifts"],
   },
   {
-    id: "affection_style",
-    label: "Affection Style",
+    id: "affection_level",
+    label: "Affection Level",
     options: ["Reserved", "Moderate", "Very Affectionate"],
+  },
+  {
+    id: "conflict_style",
+    label: "Conflict Style",
+    options: ["Address it directly", "Need time to think", "Talk it out calmly", "Avoid conflict"],
+  },
+  {
+    id: "emotional_openness",
+    label: "Emotional Openness",
+    options: ["Very open", "Moderately open", "Reserved", "Prefer to process alone"],
   },
   {
     id: "relationship_pace",
@@ -60,39 +94,36 @@ const INTIMACY_OPTIONS = [
 
 const INTERESTS_OPTIONS = [
   {
-    category: "Sports & Fitness",
-    interests: ["Gym", "Yoga", "Running", "Team Sports", "Hiking", "Swimming"],
+    category: "Fitness",
+    interests: ["Gym", "Yoga", "Running", "Team Sports", "Hiking", "Swimming", "Cycling", "Pilates"],
   },
   {
-    category: "Creative & Arts",
-    interests: ["Painting", "Music", "Photography", "Writing", "Dancing", "Theater"],
-  },
-  {
-    category: "Culture & Learning",
-    interests: ["Museums", "History", "Languages", "Philosophy", "Science", "Tech"],
-  },
-  {
-    category: "Food & Drink",
-    interests: ["Cooking", "Foodie", "Wine", "Coffee", "Baking", "Vegan/Vegetarian"],
+    category: "Food",
+    interests: ["Cooking", "Foodie", "Wine", "Coffee", "Baking", "Vegan/Vegetarian", "Farmer's Markets"],
   },
   {
     category: "Entertainment",
-    interests: ["Movies", "Gaming", "Books", "Podcasts", "TV Shows", "Comedy"],
+    interests: ["Movies", "Gaming", "Books", "Podcasts", "TV Shows", "Comedy", "Live Music", "Theater"],
   },
   {
-    category: "Travel & Adventure",
-    interests: ["Travel", "Camping", "Beach", "Mountains", "Road trips", "Budget travel"],
+    category: "Learning",
+    interests: ["Museums", "History", "Languages", "Philosophy", "Science", "Tech", "Podcasts", "Documentaries"],
   },
   {
-    category: "Community",
-    interests: ["Volunteering", "Activism", "Community Events", "Networking", "Mentoring"],
+    category: "Travel",
+    interests: ["Travel", "Camping", "Beach", "Mountains", "Road trips", "International travel", "Backpacking"],
+  },
+  {
+    category: "Creative",
+    interests: ["Painting", "Music", "Photography", "Writing", "Dancing", "Art", "Design", "Crafts"],
   },
 ];
 
 const PROMPT_QUESTIONS = [
-  { id: "p1", question: "My idea of a perfect weekend is…" },
-  { id: "p2", question: "The value I care about most in a partner is…" },
-  { id: "p3", question: "Something that always makes me smile is…" },
+  { id: "p1", question: "Dating me is like…" },
+  { id: "p2", question: "A green flag I look for is…" },
+  { id: "p3", question: "Sunday mornings are for…" },
+  { id: "p4", question: "Teach me something about…" },
 ];
 
 // ── Main component ───────────────────────────────────────
@@ -149,11 +180,12 @@ export function OnboardingWizard() {
       )}
 
       {step === 1 && (
-        <GenderStep
+        <BasicsProfileStep
           gender={state.gender}
           sexual_profile={state.sexual_profile}
-          onNext={(gender, sexual_profile) =>
-            nextStep({ gender, sexual_profile })
+          interested_in={state.interested_in}
+          onNext={(gender, sexual_profile, interested_in) =>
+            nextStep({ gender, sexual_profile, interested_in })
           }
           onBack={prevStep}
           saving={saving}
@@ -161,18 +193,7 @@ export function OnboardingWizard() {
       )}
 
       {step === 2 && (
-        <InterestedInStep
-          interested_in={state.interested_in}
-          onNext={(interested_in) =>
-            nextStep({ interested_in })
-          }
-          onBack={prevStep}
-          saving={saving}
-        />
-      )}
-
-      {step === 3 && (
-        <VibeStep
+        <PersonalityVibeStep
           vibe={state.vibe}
           onNext={(vibe) => nextStep({ vibe })}
           onBack={prevStep}
@@ -180,8 +201,19 @@ export function OnboardingWizard() {
         />
       )}
 
+      {step === 3 && (
+        <RelationshipIntentionsStep
+          intentions={state.relationship_intentions}
+          onNext={(relationship_intentions) =>
+            nextStep({ relationship_intentions })
+          }
+          onBack={prevStep}
+          saving={saving}
+        />
+      )}
+
       {step === 4 && (
-        <LifestyleHabitsStep
+        <LifestyleStep
           lifestyle={state.lifestyle_habits}
           onNext={(lifestyle_habits) =>
             nextStep({ lifestyle_habits })
@@ -192,10 +224,10 @@ export function OnboardingWizard() {
       )}
 
       {step === 5 && (
-        <IntimacyQuestionsStep
-          intimacy={state.intimacy_questions}
-          onNext={(intimacy_questions) =>
-            nextStep({ intimacy_questions })
+        <ConnectionStyleStep
+          connectionStyle={state.connection_style}
+          onNext={(connection_style) =>
+            nextStep({ connection_style })
           }
           onBack={prevStep}
           saving={saving}
@@ -224,7 +256,6 @@ export function OnboardingWizard() {
 }
 
 // ── Step 0: Basics (birthdate + location) ────────────────
-
 function BasicsStep({
   birthdate,
   location,
@@ -236,75 +267,344 @@ function BasicsStep({
   onNext: (birthdate: string, location: string) => void;
   saving: boolean;
 }) {
-  const [bd, setBd] = useState(birthdate);
+  const [month, setMonth] = useState(birthdate ? new Date(birthdate).getMonth() + 1 : 0);
+  const [day, setDay] = useState(birthdate ? new Date(birthdate).getDate() : 0);
+  const [year, setYear] = useState(birthdate ? new Date(birthdate).getFullYear() : 0);
+  
   const [loc, setLoc] = useState(location);
+  const [locationSearch, setLocationSearch] = useState(location);
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [geolocationLoading, setGeolocationLoading] = useState(false);
+  
   const [localError, setLocalError] = useState("");
 
-  function handleNext() {
-    if (!bd) {
-      setLocalError("Birthdate is required");
+  useEffect(() => {
+    if (!showLocationDropdown) return;
+
+    const trimmed = locationSearch.trim();
+
+    if (trimmed.length < 2) {
+      setLocationSuggestions([]);
+      setLocationLoading(false);
       return;
     }
+
+    const timeout = setTimeout(() => {
+      searchLocations(trimmed);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [locationSearch, showLocationDropdown]);
+
+  // Debounced location search
+  const searchLocations = async (query: string) => {
+    if (query.length < 2) {
+      setLocationSuggestions([]);
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationError("");
+    try {
+      const response = await fetch(`/v1/locations/search?q=${encodeURIComponent(query)}`);
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Failed to fetch locations: ${response.status} ${text}`);
+    }
+      
+      const data = (await response.json()) as LocationSuggestion[] | null;
+      setLocationSuggestions(data || []);
+    } catch (err) {
+      setLocationError("Unable to search locations. Please try again.");
+      console.error(err);
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const handleLocationInputChange = (value: string) => {
+  setLocationSearch(value);
+  setLocationError("");
+  setShowLocationDropdown(true);
+  };
+
+  const selectLocation = (suggestion: LocationSuggestion) => {
+    setLoc(suggestion.display);
+    setLocationSearch(suggestion.display);
+    setLocationSuggestions([]);
+    setShowLocationDropdown(false);
+  };
+
+  const useCurrentLocation = async () => {
+    setGeolocationLoading(true);
+    setLocationError("");
+    
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+      setGeolocationLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const response = await fetch(`/v1/locations/reverse-geocode?lat=${latitude}&lon=${longitude}`);
+
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`Failed to fetch location name: ${response.status} ${text}`);
+          }
+          
+          const data = (await response.json()) as ReverseGeocodeResult;
+          
+          setLoc(data.display);
+          setLocationSearch(data.display);
+          setLocationSuggestions([]);
+          setShowLocationDropdown(false);
+        } catch (err) {
+          setLocationError("Could not determine your location. Please try manually entering it.");
+          console.error(err);
+        } finally {
+          setGeolocationLoading(false);
+        }
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationError("Location permission denied. Please enter your location manually.");
+        } else {
+          setLocationError("Could not access your location. Please enter it manually.");
+        }
+        setGeolocationLoading(false);
+      }
+    );
+  };
+
+  const getBirthdateString = (): string => {
+    if (!month || !day || !year) return "";
+    return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  };
+
+  const getDaysInMonth = (m: number, y: number): number => {
+    return new Date(y, m, 0).getDate();
+  };
+
+  const isValidDate = (m: number, d: number, y: number): boolean => {
+    if (!m || !d || !y) return false;
+    if (d > getDaysInMonth(m, y)) return false;
+    if (m < 1 || m > 12) return false;
+    return true;
+  };
+
+  function handleNext() {
+    const bdStr = getBirthdateString();
+    
+    if (!month || !day || !year) {
+      setLocalError("Please enter your complete birthdate");
+      return;
+    }
+
+    if (!isValidDate(month, day, year)) {
+      setLocalError("Please enter a valid date");
+      return;
+    }
+
     if (!loc.trim()) {
       setLocalError("Location is required");
       return;
     }
 
-    // Quick 18+ check on client side.
-    const age = getAge(bd);
+    const age = getAge(bdStr);
     if (age < 18) {
       setLocalError("You must be at least 18 years old");
       return;
     }
 
     setLocalError("");
-    onNext(bd, loc.trim());
+    onNext(bdStr, loc.trim());
   }
 
+  const currentYear = new Date().getFullYear();
+  const minYear = currentYear - 100;
+  const maxYear = currentYear - 18;
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Let&apos;s get the basics</h2>
-      <p className="text-sm text-gray-500">
-        We need a few things to get started.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold">Let&apos;s get the basics</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          We need these to get started and ensure you&apos;re 18+.
+        </p>
+      </div>
 
       {localError && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
+        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-100">
           {localError}
         </div>
       )}
 
-      <div>
-        <label htmlFor="birthdate" className="block text-sm font-medium">
-          Birthdate
+      {/* Birthdate Selector */}
+      <div className="space-y-3">
+        <label className="block text-sm font-semibold text-gray-900">
+          When were you born?
         </label>
-        <input
-          id="birthdate"
-          type="date"
-          value={bd}
-          onChange={(e) => setBd(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 min-h-touch focus:border-halo-primary focus:outline-none focus:ring-1 focus:ring-halo-primary"
-        />
+        <div className="flex gap-2">
+          {/* Month */}
+          <div className="flex-1">
+            <select
+              value={month}
+              onChange={(e) => setMonth(Number(e.target.value))}
+              className="w-full rounded-lg border border-gray-300 px-3 py-3 min-h-touch text-sm font-medium bg-white focus:border-halo-primary focus:outline-none focus:ring-2 focus:ring-halo-primary/20 appearance-none cursor-pointer"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 8px center",
+                paddingRight: "28px",
+              }}
+            >
+              <option value={0}>Month</option>
+              {Array.from({ length: 12 }).map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {new Date(2000, i).toLocaleDateString("en-US", { month: "short" })}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Day */}
+          <div className="flex-1">
+            <select
+              value={day}
+              onChange={(e) => setDay(Number(e.target.value))}
+              className="w-full rounded-lg border border-gray-300 px-3 py-3 min-h-touch text-sm font-medium bg-white focus:border-halo-primary focus:outline-none focus:ring-2 focus:ring-halo-primary/20 appearance-none cursor-pointer"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 8px center",
+                paddingRight: "28px",
+              }}
+            >
+              <option value={0}>Day</option>
+              {Array.from({ length: 31 }).map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {String(i + 1).padStart(2, "0")}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Year */}
+          <div className="flex-1">
+            <select
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="w-full rounded-lg border border-gray-300 px-3 py-3 min-h-touch text-sm font-medium bg-white focus:border-halo-primary focus:outline-none focus:ring-2 focus:ring-halo-primary/20 appearance-none cursor-pointer"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 8px center",
+                paddingRight: "28px",
+              }}
+            >
+              <option value={0}>Year</option>
+              {Array.from({ length: maxYear - minYear + 1 }).map((_, i) => {
+                const y = maxYear - i;
+                return (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500">
+          {month && day && year && isValidDate(month, day, year)
+            ? `Age: ${getAge(getBirthdateString())}`
+            : "Must be 18+"}
+        </p>
       </div>
 
-      <div>
-        <label htmlFor="location" className="block text-sm font-medium">
-          Location
+      {/* Location Autocomplete */}
+      <div className="space-y-3 relative z-10">
+        <label className="block text-sm font-semibold text-gray-900">
+          Where are you located?
         </label>
-        <input
-          id="location"
-          type="text"
-          placeholder="e.g. Austin, TX"
-          value={loc}
-          onChange={(e) => setLoc(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 min-h-touch focus:border-halo-primary focus:outline-none focus:ring-1 focus:ring-halo-primary"
-        />
+        <div className="relative">
+          <input
+            type="text"
+            value={locationSearch}
+            onChange={(e) => handleLocationInputChange(e.target.value)}
+            onFocus={() => setShowLocationDropdown(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setShowLocationDropdown(false);
+            }}
+            placeholder="Search city, state, or ZIP code"
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 min-h-touch text-sm focus:border-halo-primary focus:outline-none focus:ring-2 focus:ring-halo-primary/20"
+          />
+
+          {/* Dropdown */}
+          {showLocationDropdown && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
+              {locationLoading ? (
+                <div className="px-4 py-3 text-center text-sm text-gray-500">
+                  <div className="inline-block animate-spin">⟳</div> Searching...
+                </div>
+              ) : locationError ? (
+                <div className="px-4 py-3 text-sm text-red-600 bg-red-50">
+                  {locationError}
+                </div>
+              ) : locationSuggestions.length > 0 ? (
+                locationSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion.id}
+                    onClick={() => selectLocation(suggestion)}
+                    className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
+                  >
+                    <div className="font-medium text-gray-900">{suggestion.display}</div>
+                  </button>
+                ))
+              ) : locationSearch.length > 1 ? (
+                <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                  No locations found
+                </div>
+              ) : (
+                <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                  Start typing to search
+                </div>
+              )}
+
+              {/* Use Current Location Button */}
+              <div className="border-t border-gray-200 p-2">
+                <button
+                  onClick={useCurrentLocation}
+                  disabled={geolocationLoading}
+                  className="w-full px-3 py-2 text-sm font-medium text-halo-primary hover:bg-blue-50 rounded-md transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {geolocationLoading ? (
+                    <>
+                      <span className="inline-block animate-spin">⟳</span> Detecting...
+                    </>
+                  ) : (
+                    <>
+                      📍 Use my current location
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <button
         onClick={handleNext}
         disabled={saving}
-        className="w-full rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
+        className="w-full rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 transition-opacity"
       >
         {saving ? "Saving…" : "Continue"}
       </button>
@@ -312,23 +612,39 @@ function BasicsStep({
   );
 }
 
-// ── Step 1: Gender & Sexual Profile ──────────────────
+// ── Location Autocomplete Types ──
 
-function GenderStep({
+interface LocationSuggestion {
+  id: string;
+  display: string;
+  lat: string;
+  lon: string;
+}
+
+interface ReverseGeocodeResult {
+  display: string;
+}
+
+// ── Step 1: Basics Profile (Gender, Sexual orientation, Who interested in) ──
+
+function BasicsProfileStep({
   gender,
   sexual_profile,
+  interested_in,
   onNext,
   onBack,
   saving,
 }: {
   gender: string;
   sexual_profile: string;
-  onNext: (gender: string, sexual_profile: string) => void;
+  interested_in: string[];
+  onNext: (gender: string, sexual_profile: string, interested_in: string[]) => void;
   onBack: () => void;
   saving: boolean;
 }) {
   const [genderValue, setGenderValue] = useState(gender);
   const [sexualProfileValue, setSexualProfileValue] = useState(sexual_profile);
+  const [selectedInterests, setSelectedInterests] = useState<string[]>(interested_in);
 
   const genderOptions = ["Man", "Woman", "Non-binary", "Prefer not to say"];
   const sexualProfileOptions = [
@@ -340,96 +656,10 @@ function GenderStep({
     "Demisexual",
     "Prefer not to say",
   ];
+  const interestedInOptions = ["Man", "Woman", "Non-binary"];
 
-  function handleNext() {
-    onNext(genderValue, sexualProfileValue);
-  }
-
-  const allSelected = genderValue && sexualProfileValue;
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Tell us about yourself</h2>
-      <p className="text-sm text-gray-500">
-        This helps us make better matches.
-      </p>
-
-      <div>
-        <p className="mb-2 text-sm font-medium">Gender</p>
-        <div className="flex flex-wrap gap-2">
-          {genderOptions.map((opt) => (
-            <button
-              key={opt}
-              onClick={() => setGenderValue(opt)}
-              className={`rounded-full px-4 py-2 min-h-touch text-sm border transition-colors ${
-                genderValue === opt
-                  ? "border-halo-primary bg-halo-primary text-white"
-                  : "border-gray-300 hover:border-halo-primary"
-              }`}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <p className="mb-2 text-sm font-medium">Sexual Profile</p>
-        <div className="flex flex-wrap gap-2">
-          {sexualProfileOptions.map((opt) => (
-            <button
-              key={opt}
-              onClick={() => setSexualProfileValue(opt)}
-              className={`rounded-full px-4 py-2 min-h-touch text-sm border transition-colors ${
-                sexualProfileValue === opt
-                  ? "border-halo-primary bg-halo-primary text-white"
-                  : "border-gray-300 hover:border-halo-primary"
-              }`}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex gap-3">
-        <button
-          onClick={onBack}
-          className="flex-1 rounded-md border border-gray-300 px-4 py-3 min-h-touch font-medium hover:bg-gray-50"
-        >
-          Back
-        </button>
-        <button
-          onClick={handleNext}
-          disabled={!allSelected || saving}
-          className="flex-1 rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
-        >
-          {saving ? "Saving…" : "Continue"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Step 2: Who are you interested in? ──────────────────
-
-function InterestedInStep({
-  interested_in,
-  onNext,
-  onBack,
-  saving,
-}: {
-  interested_in: string[];
-  onNext: (interested_in: string[]) => void;
-  onBack: () => void;
-  saving: boolean;
-}) {
-  const [selected, setSelected] = useState<string[]>(interested_in);
-
-  const options = ["Man", "Woman", "Non-binary"];
-
-  function toggle(option: string) {
-    setSelected((prev) => {
+  function toggleInterestedIn(option: string) {
+    setSelectedInterests((prev) => {
       if (prev.includes(option)) {
         return prev.filter((o) => o !== option);
       }
@@ -438,43 +668,97 @@ function InterestedInStep({
   }
 
   function handleNext() {
-    onNext(selected);
+    onNext(genderValue, sexualProfileValue, selectedInterests);
   }
 
-  return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Who are you interested in seeing?</h2>
-      <p className="text-sm text-gray-500">
-        Select all that apply. You can change this later.
-      </p>
+  const allSelected = genderValue && sexualProfileValue && selectedInterests.length > 0;
 
-      <div className="flex flex-wrap gap-2">
-        {options.map((option) => (
-          <button
-            key={option}
-            onClick={() => toggle(option)}
-            className={`rounded-full px-4 py-2 min-h-touch text-sm border transition-colors ${
-              selected.includes(option)
-                ? "border-halo-primary bg-halo-primary text-white"
-                : "border-gray-300 hover:border-halo-primary"
-            }`}
-          >
-            {option}
-          </button>
-        ))}
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold">Let's get to know you</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          This helps us make better matches for you.
+        </p>
       </div>
 
-      <div className="flex gap-3">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 mb-3">
+            What's your gender?
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {genderOptions.map((opt) => (
+              <button
+                key={opt}
+                onClick={() => setGenderValue(opt)}
+                className={`rounded-full px-4 py-2.5 min-h-touch text-sm font-medium border-2 transition-all ${
+                  genderValue === opt
+                    ? "border-halo-primary bg-halo-primary text-white shadow-sm"
+                    : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 mb-3">
+            Sexual orientation
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {sexualProfileOptions.map((opt) => (
+              <button
+                key={opt}
+                onClick={() => setSexualProfileValue(opt)}
+                className={`rounded-full px-4 py-2.5 min-h-touch text-sm font-medium border-2 transition-all ${
+                  sexualProfileValue === opt
+                    ? "border-halo-primary bg-halo-primary text-white shadow-sm"
+                    : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 mb-3">
+            Who are you interested in?
+          </label>
+          <p className="text-xs text-gray-500 mb-2">Select all that apply</p>
+          <div className="flex flex-wrap gap-2">
+            {interestedInOptions.map((option) => (
+              <button
+                key={option}
+                onClick={() => toggleInterestedIn(option)}
+                className={`rounded-full px-4 py-2.5 min-h-touch text-sm font-medium border-2 transition-all ${
+                  selectedInterests.includes(option)
+                    ? "border-halo-primary bg-halo-primary text-white shadow-sm"
+                    : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-3 pt-4">
         <button
           onClick={onBack}
-          className="flex-1 rounded-md border border-gray-300 px-4 py-3 min-h-touch font-medium hover:bg-gray-50"
+          className="flex-1 rounded-lg border border-gray-300 px-4 py-3 min-h-touch font-medium text-gray-700 hover:bg-gray-50 transition-colors"
         >
           Back
         </button>
         <button
           onClick={handleNext}
-          disabled={selected.length === 0 || saving}
-          className="flex-1 rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
+          disabled={!allSelected || saving}
+          className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {saving ? "Saving…" : "Continue"}
         </button>
@@ -483,9 +767,9 @@ function InterestedInStep({
   );
 }
 
-// ── Step 3: Vibe ─────────────────────────────────────────
+// ── Step 2: Personality & Vibe ──────────────────────────
 
-function VibeStep({
+function PersonalityVibeStep({
   vibe,
   onNext,
   onBack,
@@ -502,47 +786,140 @@ function VibeStep({
     onNext(selected);
   }
 
-  const allSelected = VIBE_OPTIONS.every((v) => selected[v.key]);
+  const allSelected = PERSONALITY_VIBE_OPTIONS.every((v) => selected[v.key]);
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">What&apos;s your vibe?</h2>
-      <p className="text-sm text-gray-500">Pick what best describes you.</p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold">What's your vibe?</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Help others understand your personality and lifestyle.
+        </p>
+      </div>
 
-      {VIBE_OPTIONS.map((group) => (
-        <div key={group.key}>
-          <p className="mb-2 text-sm font-medium">{group.label}</p>
-          <div className="flex flex-wrap gap-2">
-            {group.options.map((opt) => (
-              <button
-                key={opt}
-                onClick={() =>
-                  setSelected((s) => ({ ...s, [group.key]: opt }))
-                }
-                className={`rounded-full px-4 py-2 min-h-touch text-sm border transition-colors ${
-                  selected[group.key] === opt
-                    ? "border-halo-primary bg-halo-primary text-white"
-                    : "border-gray-300 hover:border-halo-primary"
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
+      <div className="space-y-5">
+        {PERSONALITY_VIBE_OPTIONS.map((group) => (
+          <div key={group.key}>
+            <label className="block text-sm font-semibold text-gray-900 mb-3">
+              {group.label}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {group.options.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() =>
+                    setSelected((s) => ({ ...s, [group.key]: opt }))
+                  }
+                  className={`rounded-full px-4 py-2.5 min-h-touch text-sm font-medium border-2 transition-all ${
+                    selected[group.key] === opt
+                      ? "border-halo-primary bg-halo-primary text-white shadow-sm"
+                      : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 pt-4">
         <button
           onClick={onBack}
-          className="flex-1 rounded-md border border-gray-300 px-4 py-3 min-h-touch font-medium hover:bg-gray-50"
+          className="flex-1 rounded-lg border border-gray-300 px-4 py-3 min-h-touch font-medium text-gray-700 hover:bg-gray-50 transition-colors"
         >
           Back
         </button>
         <button
           onClick={handleNext}
           disabled={!allSelected || saving}
-          className="flex-1 rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          {saving ? "Saving…" : "Continue"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 3: Relationship Intentions ───────────────────
+
+function RelationshipIntentionsStep({
+  intentions,
+  onNext,
+  onBack,
+  saving,
+}: {
+  intentions: string[];
+  onNext: (intentions: string[]) => void;
+  onBack: () => void;
+  saving: boolean;
+}) {
+  const [selected, setSelected] = useState<string[]>(intentions);
+
+  function toggle(option: string) {
+    setSelected((prev) => {
+      if (prev.includes(option)) {
+        return prev.filter((o) => o !== option);
+      }
+      return [...prev, option];
+    });
+  }
+
+  function handleNext() {
+    onNext(selected);
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold">What are you looking for?</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Select all that apply. You can change this anytime.
+        </p>
+      </div>
+
+      <div className="space-y-2.5">
+        {RELATIONSHIP_INTENTIONS_OPTIONS.map((option) => (
+          <button
+            key={option}
+            onClick={() => toggle(option)}
+            className={`w-full rounded-lg px-4 py-3.5 text-left font-medium border-2 transition-all flex items-center ${
+              selected.includes(option)
+                ? "border-halo-primary bg-halo-primary/10 text-halo-primary"
+                : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-gray-50"
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${
+                selected.includes(option)
+                  ? "border-halo-primary bg-halo-primary"
+                  : "border-gray-300"
+              }`}
+            >
+              {selected.includes(option) && (
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+            {option}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-3 pt-4">
+        <button
+          onClick={onBack}
+          className="flex-1 rounded-lg border border-gray-300 px-4 py-3 min-h-touch font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          Back
+        </button>
+        <button
+          onClick={handleNext}
+          disabled={selected.length === 0 || saving}
+          className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {saving ? "Saving…" : "Continue"}
         </button>
@@ -553,9 +930,9 @@ function VibeStep({
 
 // ── Step 4: Tags ─────────────────────────────────────────
 
-// ── Step 4: Lifestyle Habits ────────────────────────────
 
-function LifestyleHabitsStep({
+
+function LifestyleStep({
   lifestyle = {},
   onNext,
   onBack,
@@ -576,45 +953,51 @@ function LifestyleHabitsStep({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Your lifestyle</h2>
-      <p className="text-sm text-gray-500">
-        Help us understand your habits and preferences.
-      </p>
+      <div>
+        <h2 className="text-2xl font-semibold">Your lifestyle</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Help matches understand your habits and preferences.
+        </p>
+      </div>
 
-      {LIFESTYLE_OPTIONS.map((group) => (
-        <div key={group.key} className="space-y-2">
-          <p className="text-sm font-medium text-gray-700">{group.category}</p>
-          <div className="flex flex-wrap gap-2">
-            {group.options.map((opt) => (
-              <button
-                key={opt}
-                onClick={() =>
-                  setSelected((s) => ({ ...s, [group.key]: opt }))
-                }
-                className={`rounded-full px-3 py-1.5 text-xs border transition-colors ${
-                  selected[group.key] === opt
-                    ? "border-halo-primary bg-halo-primary text-white"
-                    : "border-gray-300 hover:border-halo-primary"
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
+      <div className="space-y-6">
+        {LIFESTYLE_OPTIONS.map((group) => (
+          <div key={group.key}>
+            <label className="block text-sm font-semibold text-gray-900 mb-3">
+              {group.category}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {group.options.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() =>
+                    setSelected((s) => ({ ...s, [group.key]: opt }))
+                  }
+                  className={`rounded-full px-3.5 py-2 text-sm font-medium border-2 transition-all ${
+                    selected[group.key] === opt
+                      ? "border-halo-primary bg-halo-primary text-white shadow-sm"
+                      : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 pt-4">
         <button
           onClick={onBack}
-          className="flex-1 rounded-md border border-gray-300 px-4 py-3 min-h-touch font-medium hover:bg-gray-50"
+          className="flex-1 rounded-lg border border-gray-300 px-4 py-3 min-h-touch font-medium text-gray-700 hover:bg-gray-50 transition-colors"
         >
           Back
         </button>
         <button
           onClick={handleNext}
           disabled={!allSelected || saving}
-          className="flex-1 rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {saving ? "Saving…" : "Continue"}
         </button>
@@ -623,68 +1006,74 @@ function LifestyleHabitsStep({
   );
 }
 
-// ── Step 5: Intimacy Questions ──────────────────────────
+// ── Step 5: Connection Style ───────────────────────────
 
-function IntimacyQuestionsStep({
-  intimacy,
+function ConnectionStyleStep({
+  connectionStyle = {},
   onNext,
   onBack,
   saving,
 }: {
-  intimacy: Record<string, string>;
-  onNext: (intimacy: Record<string, string>) => void;
+  connectionStyle?: Record<string, string>;
+  onNext: (connectionStyle: Record<string, string>) => void;
   onBack: () => void;
   saving: boolean;
 }) {
-  const [selected, setSelected] = useState<Record<string, string>>(intimacy);
+  const [selected, setSelected] = useState<Record<string, string>>(connectionStyle ?? {});
 
   function handleNext() {
     onNext(selected);
   }
 
-  const allSelected = INTIMACY_OPTIONS.every((opt) => selected[opt.id]);
+  const allSelected = CONNECTION_STYLE_OPTIONS.every((opt) => selected?.[opt.id]);
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Intimacy & connection</h2>
-      <p className="text-sm text-gray-500">
-        Choose what resonates with you most.
-      </p>
+      <div>
+        <h2 className="text-2xl font-semibold">How do you connect?</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Help matches understand your communication and emotional style.
+        </p>
+      </div>
 
-      {INTIMACY_OPTIONS.map((group) => (
-        <div key={group.id} className="space-y-2">
-          <p className="text-sm font-medium text-gray-700">{group.label}</p>
-          <div className="flex flex-wrap gap-2">
-            {group.options.map((opt) => (
-              <button
-                key={opt}
-                onClick={() =>
-                  setSelected((s) => ({ ...s, [group.id]: opt }))
-                }
-                className={`rounded-full px-3 py-1.5 text-xs border transition-colors ${
-                  selected[group.id] === opt
-                    ? "border-halo-primary bg-halo-primary text-white"
-                    : "border-gray-300 hover:border-halo-primary"
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
+      <div className="space-y-5">
+        {CONNECTION_STYLE_OPTIONS.map((group) => (
+          <div key={group.id}>
+            <label className="block text-sm font-semibold text-gray-900 mb-3">
+              {group.label}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {group.options.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() =>
+                    setSelected((s) => ({ ...s, [group.id]: opt }))
+                  }
+                  className={`rounded-full px-4 py-2.5 min-h-touch text-sm font-medium border-2 transition-all ${
+                    selected[group.id] === opt
+                      ? "border-halo-primary bg-halo-primary text-white shadow-sm"
+                      : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 pt-4">
         <button
           onClick={onBack}
-          className="flex-1 rounded-md border border-gray-300 px-4 py-3 min-h-touch font-medium hover:bg-gray-50"
+          className="flex-1 rounded-lg border border-gray-300 px-4 py-3 min-h-touch font-medium text-gray-700 hover:bg-gray-50 transition-colors"
         >
           Back
         </button>
         <button
           onClick={handleNext}
           disabled={!allSelected || saving}
-          className="flex-1 rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {saving ? "Saving…" : "Continue"}
         </button>
@@ -696,71 +1085,92 @@ function IntimacyQuestionsStep({
 // ── Step 6: Interests ───────────────────────────────────
 
 function InterestsStep({
-  selected,
+  selected = [],
   onNext,
   onBack,
   saving,
 }: {
-  selected: string[];
+  selected?: string[];
   onNext: (interests: string[]) => void;
   onBack: () => void;
   saving: boolean;
 }) {
-  const [interests, setInterests] = useState(selected);
+  const [interests, setInterests] = useState<string[]>(selected ?? []);
+  const MAX_INTERESTS = 12;
 
   function toggle(interest: string) {
     setInterests((prev) => {
       const exists = prev.includes(interest);
       if (exists) return prev.filter((i) => i !== interest);
-      if (prev.length >= 12) return prev; // max 12 interests
+      if (prev.length >= MAX_INTERESTS) return prev; // max 12 interests
       return [...prev, interest];
     });
   }
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Your interests</h2>
-      <p className="text-sm text-gray-500">
-        Pick up to 12 that describe you. Choose from categories below.
-      </p>
+      <div>
+        <h2 className="text-2xl font-semibold">What are your interests?</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Pick up to {MAX_INTERESTS} that describe you.
+        </p>
+      </div>
 
-      {INTERESTS_OPTIONS.map((category) => (
-        <div key={category.category} className="space-y-2">
-          <p className="text-sm font-medium text-gray-700">{category.category}</p>
-          <div className="flex flex-wrap gap-2">
-            {category.interests.map((interest) => {
-              const isSelected = interests.includes(interest);
-              return (
-                <button
-                  key={interest}
-                  onClick={() => toggle(interest)}
-                  className={`rounded-full px-3 py-1.5 text-xs border transition-colors ${
-                    isSelected
-                      ? "border-halo-primary bg-halo-primary text-white"
-                      : "border-gray-300 hover:border-halo-primary"
-                  }`}
-                >
-                  {interest}
-                </button>
-              );
-            })}
+      <div className="space-y-5">
+        {INTERESTS_OPTIONS.map((category) => (
+          <div key={category.category}>
+            <label className="block text-sm font-semibold text-gray-900 mb-3">
+              {category.category}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {category.interests.map((interest) => {
+                const isSelected = interests.includes(interest);
+                const isDisabled = !isSelected && interests.length >= MAX_INTERESTS;
+                return (
+                  <button
+                    key={interest}
+                    onClick={() => toggle(interest)}
+                    disabled={isDisabled}
+                    className={`rounded-full px-4 py-2 text-sm font-medium border-2 transition-all min-h-touch ${
+                      isSelected
+                        ? "border-halo-primary bg-halo-primary text-white shadow-sm"
+                        : isDisabled
+                        ? "border-gray-200 text-gray-400 cursor-not-allowed"
+                        : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
+                    }`}
+                  >
+                    {interest}
+                  </button>
+                );
+              })}
+            </div>
           </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between pt-2 px-1">
+        <p className="text-sm font-medium text-gray-600">
+          {interests.length}/{MAX_INTERESTS} selected
+        </p>
+        <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-halo-primary transition-all"
+            style={{ width: `${(interests.length / MAX_INTERESTS) * 100}%` }}
+          />
         </div>
-      ))}
+      </div>
 
-      <p className="text-xs text-gray-400">{interests.length}/12 selected</p>
-
-      <div className="flex gap-3">
+      <div className="flex gap-3 pt-4">
         <button
           onClick={onBack}
-          className="flex-1 rounded-md border border-gray-300 px-4 py-3 min-h-touch font-medium hover:bg-gray-50"
+          className="flex-1 rounded-lg border border-gray-300 px-4 py-3 min-h-touch font-medium text-gray-700 hover:bg-gray-50 transition-colors"
         >
           Back
         </button>
         <button
           onClick={() => onNext(interests)}
           disabled={interests.length === 0 || saving}
-          className="flex-1 rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {saving ? "Saving…" : "Continue"}
         </button>
@@ -808,41 +1218,67 @@ function PromptsStep({
   ).length;
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Share a bit about yourself</h2>
-      <p className="text-sm text-gray-500">
-        Answer at least one prompt. These will show up on your discovery card.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold">Share a bit about yourself</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Answer at least 1 prompt. These will show up on your profile.
+        </p>
+      </div>
 
-      {PROMPT_QUESTIONS.map((q) => (
-        <div key={q.id}>
-          <label htmlFor={q.id} className="block text-sm font-medium">
-            {q.question}
-          </label>
-          <textarea
-            id={q.id}
-            rows={2}
-            value={answers[q.id] || ""}
-            onChange={(e) =>
-              setAnswers((a) => ({ ...a, [q.id]: e.target.value }))
-            }
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-halo-primary focus:outline-none focus:ring-1 focus:ring-halo-primary resize-none"
-            maxLength={300}
-          />
+      <div className="space-y-4">
+        {PROMPT_QUESTIONS.map((q) => (
+          <div key={q.id} className="space-y-2">
+            <label htmlFor={q.id} className="block text-sm font-semibold text-gray-900">
+              {q.question}
+            </label>
+            <textarea
+              id={q.id}
+              rows={3}
+              placeholder="Be creative and genuine. This helps people get to know you."
+              value={answers[q.id] || ""}
+              onChange={(e) =>
+                setAnswers((a) => ({ ...a, [q.id]: e.target.value }))
+              }
+              maxLength={300}
+              className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-halo-primary focus:outline-none focus:ring-2 focus:ring-halo-primary/20 resize-none"
+            />
+            <p className="text-xs text-gray-400">
+              {answers[q.id]?.length || 0}/300 characters
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between py-3 px-3 bg-blue-50 rounded-lg">
+        <p className="text-sm font-medium text-gray-700">
+          {filledCount} of {PROMPT_QUESTIONS.length} answered
+        </p>
+        <div className="flex gap-1">
+          {PROMPT_QUESTIONS.map((q) => (
+            <div
+              key={q.id}
+              className={`h-2 w-2 rounded-full transition-colors ${
+                answers[q.id]?.trim()
+                  ? "bg-halo-primary"
+                  : "bg-gray-300"
+              }`}
+            />
+          ))}
         </div>
-      ))}
+      </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 pt-2">
         <button
           onClick={onBack}
-          className="flex-1 rounded-md border border-gray-300 px-4 py-3 min-h-touch font-medium hover:bg-gray-50"
+          className="flex-1 rounded-lg border border-gray-300 px-4 py-3 min-h-touch font-medium text-gray-700 hover:bg-gray-50 transition-colors"
         >
           Back
         </button>
         <button
           onClick={handleNext}
           disabled={filledCount === 0 || saving}
-          className="flex-1 rounded-md bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {saving ? "Completing…" : "Complete Profile"}
         </button>
