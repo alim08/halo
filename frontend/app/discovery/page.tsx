@@ -17,16 +17,24 @@ export default function DiscoveryPage() {
     }
 
     // Verify user is onboarded before showing discovery.
+    console.log("[Discovery] Checking if user is onboarded...");
     api.me
       .get()
       .then((me: MeResponse) => {
+        console.log("[Discovery] OnboardingCheck result:", {
+          is_onboarded: me.is_onboarded,
+          will_redirect: !me.is_onboarded,
+        });
         if (!me.is_onboarded) {
+          console.log("[Discovery] User not onboarded, redirecting to /onboarding");
           router.replace("/onboarding");
           return;
         }
+        console.log("[Discovery] ✅ User onboarded, proceeding to discovery");
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err: Error) => {
+        console.error("[Discovery] ❌ Error checking profile:", err.message);
         setError("Failed to load your profile.");
         setLoading(false);
       });

@@ -39,6 +39,7 @@ export function DiscoveryStack() {
 
   // Loading state.
   if (loading && cards.length === 0) {
+    console.log("[DiscoveryStack] Loading discovery cards...");
     return (
       <div className="text-center">
         <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-halo-primary border-t-transparent" />
@@ -49,6 +50,7 @@ export function DiscoveryStack() {
 
   // Error state.
   if (error) {
+    console.log("[DiscoveryStack] Error state:", error);
     return (
       <div className="text-center">
         <p className="text-red-600">{error}</p>
@@ -59,6 +61,7 @@ export function DiscoveryStack() {
   // Empty state — no more candidates.
   const currentCard: DiscoveryCardData | undefined = cards[currentIndex];
   if (!currentCard || isEmpty) {
+    console.log("[DiscoveryStack] 📭 Empty state - no more candidates or index out of range");
     return (
       <div className="text-center">
         <p className="text-lg font-semibold text-gray-600">

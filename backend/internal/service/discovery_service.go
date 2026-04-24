@@ -70,6 +70,12 @@ func (s *DiscoveryService) GetDiscoveryFeed(ctx context.Context, userID string, 
 		return nil, fmt.Errorf("find candidates: %w", err)
 	}
 
+	fmt.Printf("[Discovery] Found %d candidates for user %s\\n", len(candidates), userID)
+	if len(candidates) == 0 {
+		fmt.Println("[Discovery] ⚠️  EMPTY discovery list - no available candidates for this user")
+		return &DiscoveryResponse{Cards: []DiscoveryCard{}}, nil
+	}
+
 	// Rank/score candidates (scores stay server-side).
 	ranked := s.matchingService.RankCandidates(viewer, candidates)
 

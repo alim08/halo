@@ -90,7 +90,10 @@ func (s *ProfileService) UpsertProfile(ctx context.Context, userID string, req *
 	effectiveProfileData := mergeJSON(current.ProfileData, req.ProfileData)
 
 	// Check whether onboarding is now complete.
+	fmt.Printf("[Profile] Checking onboarding: birthdate=%v, location=%q, updating with new data\\n", 
+		effectiveBirthdate, effectiveLocation)
 	isOnboarded := CheckOnboardingComplete(effectiveBirthdate, effectiveLocation, effectiveProfileData)
+	fmt.Printf("[Profile] Onboarding complete? %v\\n", isOnboarded)
 
 	// Persist.
 	user, err := s.userRepo.UpdateProfile(ctx, userID, req.Birthdate, req.CoarseLocation, req.ProfileData, isOnboarded)

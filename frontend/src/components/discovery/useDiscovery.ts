@@ -23,15 +23,21 @@ export function useDiscovery() {
     try {
       setLoading(true);
       setError(null);
+      console.log("[Discovery] Fetching discovery feed...");
       const resp = await api.discovery.getFeed();
+      console.log("[Discovery] Received", resp.cards.length, "cards from API");
       if (resp.cards.length === 0) {
+        console.log("[Discovery] 📭 EMPTY discovery list - no available profiles");
         setIsEmpty(true);
       } else {
+        console.log("[Discovery] ✅ Loaded", resp.cards.length, "cards");
         setCards(resp.cards);
         setIsEmpty(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load cards");
+      const msg = err instanceof Error ? err.message : "Failed to load cards";
+      console.error("[Discovery] ❌ Error fetching cards:", msg);
+      setError(msg);
     } finally {
       setLoading(false);
     }
