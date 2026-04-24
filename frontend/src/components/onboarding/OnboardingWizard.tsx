@@ -561,7 +561,7 @@ function BasicsStep({
               ) : locationSuggestions.length > 0 ? (
                 locationSuggestions.map((suggestion) => (
                   <button
-                    key={suggestion.id}
+                    key={`${suggestion.lat}-${suggestion.lon}-${suggestion.display}`}
                     onClick={() => selectLocation(suggestion)}
                     className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
                   >

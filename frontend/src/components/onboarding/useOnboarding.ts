@@ -155,8 +155,8 @@ export function useOnboarding() {
   );
 
   const nextStep = useCallback(
-    (partial: Partial<OnboardingState>) => {
-      saveProgress(partial);
+    async (partial: Partial<OnboardingState>) => {
+      await saveProgress(partial);
       setStep((s) => s + 1);
     },
     [saveProgress]
