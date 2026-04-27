@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, type ComparisonProfile } from "@/lib/api";
 import { DiscoveryCardData } from "./DiscoveryCard";
 
 type ConnectResult = {
@@ -15,6 +15,8 @@ type ConnectResult = {
  */
 export function useDiscovery() {
   const [cards, setCards] = useState<DiscoveryCardData[]>([]);
+  const [currentUserProfile, setCurrentUserProfile] =
+    useState<ComparisonProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEmpty, setIsEmpty] = useState(false);
@@ -24,7 +26,12 @@ export function useDiscovery() {
       setLoading(true);
       setError(null);
       console.log("[Discovery] Fetching discovery feed...");
-      const resp = await api.discovery.getFeed();
+      const [resp, me] = await Promise.all([
+        api.discovery.getFeed(),
+        api.me.get(),
+      ]);
+
+      setCurrentUserProfile(me.profile_data as ComparisonProfile);
       console.log("[Discovery] Received", resp.cards.length, "cards from API");
       if (resp.cards.length === 0) {
         console.log("[Discovery] 📭 EMPTY discovery list - no available profiles");
@@ -63,5 +70,14 @@ export function useDiscovery() {
     }
   }, []);
 
-  return { cards, loading, error, isEmpty, actPass, actConnect, refetch: fetchCards };
+  return {
+    cards,
+    currentUserProfile,
+    loading,
+    error,
+    isEmpty,
+    actPass,
+    actConnect,
+    refetch: fetchCards,
+  };
 }

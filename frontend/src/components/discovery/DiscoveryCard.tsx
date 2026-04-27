@@ -10,8 +10,13 @@ import { useMemo } from "react";
 import { ClassicCard, ClassicCardData } from "./cardTypes/ClassicCard";
 import { QuoteCard, QuoteCardData } from "./cardTypes/QuoteCard";
 import { LifestyleCard, LifestyleCardData } from "./cardTypes/LifestyleCard";
+import {
+  buildSplitScreenRows,
+  SplitScreenCard,
+  SplitScreenCardData,
+} from "./cardTypes/SplitScreenCard";
 import { CardLayoutType } from "@/lib/cardTemplates";
-import { getLifestyleBadges } from "@/lib/cardTemplates";
+import type { ComparisonProfile } from "@/lib/api";
 
 /**
  * Raw discovery card data from API
@@ -22,13 +27,18 @@ export type DiscoveryCardData = {
   location: string;
   vibe_tags: string[];
   prompt_answers: { question: string; answer: string }[];
-  profile_data?: Record<string, any>;
+  lifestyle_habits?: Record<string, unknown>;
+  vibe?: Record<string, unknown>;
+  connection_style?: Record<string, unknown>;
+  interests?: string[];
+  profile_data?: ComparisonProfile;
   layout_type?: CardLayoutType;
 };
 
 type DiscoveryCardProps = {
   card: DiscoveryCardData;
   templateType: CardLayoutType;
+  currentUserProfile?: ComparisonProfile | null;
   onPass: () => void;
   onConnect: () => void;
 };
@@ -73,12 +83,84 @@ function generateSnapshotLines(
   });
 }
 
+const JUNK_TEXT = new Set([
+  "12",
+  "n/a",
+  "na",
+  "none",
+  "null",
+  "test",
+  "undefined",
+  "yes1",
+  "yuh",
+]);
+
+function isUsefulText(value: unknown, minLength = 3): value is string {
+  if (typeof value !== "string") return false;
+
+  const cleaned = value.trim();
+  return cleaned.length >= minLength && !JUNK_TEXT.has(cleaned.toLowerCase());
+}
+
+function getLifestyleHabits(card: DiscoveryCardData): Record<string, unknown> {
+  const profileLifestyle =
+    card.profile_data?.lifestyle_habits ?? card.profile_data?.lifestyle;
+
+  if (card.lifestyle_habits) return card.lifestyle_habits;
+  if (profileLifestyle && typeof profileLifestyle === "object" && !Array.isArray(profileLifestyle)) {
+    return profileLifestyle as Record<string, unknown>;
+  }
+
+  return {};
+}
+
+function getInterests(card: DiscoveryCardData): string[] {
+  const profileInterests = card.profile_data?.interests;
+  const source = card.interests?.length
+    ? card.interests
+    : Array.isArray(profileInterests)
+      ? profileInterests
+      : [];
+
+  return source.filter((item): item is string => isUsefulText(item));
+}
+
+function hasValidPrompt(prompts: { question: string; answer: string }[]): boolean {
+  return prompts.some((prompt) => isUsefulText(prompt.answer, 4) && /[a-z]/i.test(prompt.answer));
+}
+
+function hasUsefulLifestyleData(card: DiscoveryCardData): boolean {
+  const lifestyle = getLifestyleHabits(card);
+  const hasLifestyle = Object.values(lifestyle).some((value) => isUsefulText(value));
+
+  return hasLifestyle || getInterests(card).length > 0 || hasValidPrompt(card.prompt_answers);
+}
+
+function getProfileRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function getCandidateProfile(card: DiscoveryCardData): ComparisonProfile {
+  return {
+    ...(card.profile_data ?? {}),
+    lifestyle_habits: getLifestyleHabits(card),
+    vibe: getProfileRecord(card.vibe ?? card.profile_data?.vibe),
+    connection_style: getProfileRecord(
+      card.connection_style ?? card.profile_data?.connection_style
+    ),
+    interests: getInterests(card),
+  };
+}
+
 /**
  * Route to appropriate card component
  */
 function renderCard(
   templateType: CardLayoutType,
   card: DiscoveryCardData,
+  currentUserProfile: ComparisonProfile | null | undefined,
   onPass: () => void,
   onConnect: () => void
 ) {
@@ -114,19 +196,66 @@ function renderCard(
         />
       );
 
+    case "compatibility": {
+      const candidateProfile = getCandidateProfile(card);
+      const rows = buildSplitScreenRows(currentUserProfile, candidateProfile);
+
+      if (rows.length < 2) {
+        return (
+          <QuoteCard
+            data={{
+              card_id: card.card_id,
+              age: card.age,
+              location: card.location,
+              vibe_tags: card.vibe_tags,
+              standout_prompt: selectStandoutPrompt(card.prompt_answers),
+              additional_prompts: card.prompt_answers.slice(1, 2),
+            } as QuoteCardData}
+            {...commonProps}
+          />
+        );
+      }
+
+      return (
+        <SplitScreenCard
+          data={{
+            card_id: card.card_id,
+            age: card.age,
+            location: card.location,
+            currentUserProfile: currentUserProfile ?? {},
+            candidateProfile,
+          } as SplitScreenCardData}
+          {...commonProps}
+        />
+      );
+    }
+
     case "lifestyle":
+      if (!hasUsefulLifestyleData(card)) {
+        return (
+          <ClassicCard
+            data={{
+              card_id: card.card_id,
+              age: card.age,
+              location: card.location,
+              vibe_tags: card.vibe_tags,
+              prompt_answers: card.prompt_answers,
+            } as ClassicCardData}
+            {...commonProps}
+          />
+        );
+      }
+
       return (
         <LifestyleCard
           data={{
             card_id: card.card_id,
             age: card.age,
             location: card.location,
-            vibe_tags: card.vibe_tags,
-            lifestyle_badges: getLifestyleBadges(card.profile_data || {}),
-            bio_prompt:
-              card.prompt_answers.length > 0
-                ? card.prompt_answers[0]
-                : undefined,
+            lifestyle_habits: getLifestyleHabits(card),
+            interests: getInterests(card),
+            profile_data: card.profile_data,
+            prompt_answers: card.prompt_answers,
           } as LifestyleCardData}
           {...commonProps}
         />
@@ -151,11 +280,12 @@ function renderCard(
 export function DiscoveryCard({
   card,
   templateType,
+  currentUserProfile,
   onPass,
   onConnect,
 }: DiscoveryCardProps) {
   return useMemo(
-    () => renderCard(templateType, card, onPass, onConnect),
-    [templateType, card, onPass, onConnect]
+    () => renderCard(templateType, card, currentUserProfile, onPass, onConnect),
+    [templateType, card, currentUserProfile, onPass, onConnect]
   );
 }

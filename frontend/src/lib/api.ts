@@ -109,12 +109,26 @@ export type MeResponse = {
   profile_data: Record<string, unknown>;
 };
 
+export type ComparisonProfile = {
+  lifestyle_habits?: Record<string, unknown>;
+  lifestyle?: Record<string, unknown>;
+  vibe?: Record<string, unknown>;
+  connection_style?: Record<string, unknown>;
+  connection?: Record<string, unknown>;
+  interests?: string[];
+};
+
 export type DiscoveryCard = {
   card_id: string;
   age: number;
   location: string;
   vibe_tags: string[];
   prompt_answers: { question: string; answer: string }[];
+  lifestyle_habits?: Record<string, unknown>;
+  vibe?: Record<string, unknown>;
+  connection_style?: Record<string, unknown>;
+  interests?: string[];
+  profile_data?: ComparisonProfile;
 };
 
 export type DiscoveryResponse = {

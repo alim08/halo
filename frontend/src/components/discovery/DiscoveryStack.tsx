@@ -13,8 +13,15 @@ import { CardTemplateSelector, CardLayoutType } from "@/lib/cardTemplates";
  * Uses CardTemplateSelector to vary card layouts and avoid repetition.
  */
 export function DiscoveryStack() {
-  const { cards, loading, error, actPass, actConnect, isEmpty } =
-    useDiscovery();
+  const {
+    cards,
+    currentUserProfile,
+    loading,
+    error,
+    actPass,
+    actConnect,
+    isEmpty,
+  } = useDiscovery();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchAlert, setMatchAlert] = useState<string | null>(null);
 
@@ -95,6 +102,7 @@ export function DiscoveryStack() {
       <DiscoveryCard
         card={currentCard}
         templateType={currentTemplate}
+        currentUserProfile={currentUserProfile}
         onPass={handlePass}
         onConnect={handleConnect}
       />
