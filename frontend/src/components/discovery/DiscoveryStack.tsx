@@ -1,19 +1,30 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { DiscoveryCard, DiscoveryCardData } from "./DiscoveryCard";
 import { useDiscovery } from "./useDiscovery";
+import { CardTemplateSelector, CardLayoutType } from "@/lib/cardTemplates";
 
 /**
  * DiscoveryStack manages a vertical stack of discovery cards.
  * Shows one card at a time; swiping / tapping Pass/Connect advances to next.
  * When the stack runs out, fetches more cards automatically.
+ *
+ * Uses CardTemplateSelector to vary card layouts and avoid repetition.
  */
 export function DiscoveryStack() {
   const { cards, loading, error, actPass, actConnect, isEmpty } =
     useDiscovery();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchAlert, setMatchAlert] = useState<string | null>(null);
+
+  // Initialize template selector
+  const templateSelector = useMemo(() => new CardTemplateSelector(), []);
+
+  // Determine template for current card
+  const currentTemplate: CardLayoutType = useMemo(() => {
+    return templateSelector.selectTemplate();
+  }, [currentIndex, templateSelector]);
 
   const advance = useCallback(() => {
     setCurrentIndex((prev) => prev + 1);
@@ -39,7 +50,6 @@ export function DiscoveryStack() {
 
   // Loading state.
   if (loading && cards.length === 0) {
-    console.log("[DiscoveryStack] Loading discovery cards...");
     return (
       <div className="text-center">
         <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-halo-primary border-t-transparent" />
@@ -50,7 +60,6 @@ export function DiscoveryStack() {
 
   // Error state.
   if (error) {
-    console.log("[DiscoveryStack] Error state:", error);
     return (
       <div className="text-center">
         <p className="text-red-600">{error}</p>
@@ -61,7 +70,6 @@ export function DiscoveryStack() {
   // Empty state — no more candidates.
   const currentCard: DiscoveryCardData | undefined = cards[currentIndex];
   if (!currentCard || isEmpty) {
-    console.log("[DiscoveryStack] 📭 Empty state - no more candidates or index out of range");
     return (
       <div className="text-center">
         <p className="text-lg font-semibold text-gray-600">
@@ -83,9 +91,10 @@ export function DiscoveryStack() {
         </div>
       )}
 
-      {/* Current card */}
+      {/* Current card with dynamic template */}
       <DiscoveryCard
         card={currentCard}
+        templateType={currentTemplate}
         onPass={handlePass}
         onConnect={handleConnect}
       />

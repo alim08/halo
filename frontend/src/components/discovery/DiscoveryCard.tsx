@@ -1,86 +1,161 @@
+/**
+ * Main DiscoveryCard orchestrator
+ * Routes to different card layouts based on template selection
+ * Transforms raw API data into template-specific formats
+ */
+
 "use client";
 
-import { Heart, X } from "lucide-react";
+import { useMemo } from "react";
+import { ClassicCard, ClassicCardData } from "./cardTypes/ClassicCard";
+import { QuoteCard, QuoteCardData } from "./cardTypes/QuoteCard";
+import { LifestyleCard, LifestyleCardData } from "./cardTypes/LifestyleCard";
+import { CardLayoutType } from "@/lib/cardTemplates";
+import { getLifestyleBadges } from "@/lib/cardTemplates";
 
+/**
+ * Raw discovery card data from API
+ */
 export type DiscoveryCardData = {
   card_id: string;
   age: number;
   location: string;
   vibe_tags: string[];
   prompt_answers: { question: string; answer: string }[];
+  profile_data?: Record<string, any>;
+  layout_type?: CardLayoutType;
 };
 
 type DiscoveryCardProps = {
   card: DiscoveryCardData;
+  templateType: CardLayoutType;
   onPass: () => void;
   onConnect: () => void;
 };
 
 /**
- * DiscoveryCard renders a text-only profile card.
- * Constitution: NO photos, NO image URLs, NO blur variants.
- * Only text content is shown — vibe tags, prompts, age, location.
+ * Select best answer for quote card (longest non-trivial answer)
  */
-export function DiscoveryCard({ card, onPass, onConnect }: DiscoveryCardProps) {
-  return (
-    <div className="flex w-full max-w-sm flex-col rounded-2xl bg-white shadow-lg">
-      {/* Header: age & location */}
-      <div className="rounded-t-2xl bg-gradient-to-r from-halo-primary to-halo-secondary px-5 py-4">
-        <p className="text-lg font-bold text-white">
-          {card.age} · {card.location || "Somewhere nearby"}
-        </p>
-      </div>
+function selectStandoutPrompt(
+  prompts: { question: string; answer: string }[]
+): { question: string; answer: string } {
+  if (prompts.length === 0) {
+    return { question: "Getting to know them…", answer: "Check back soon!" };
+  }
 
-      {/* Vibe tags */}
-      {card.vibe_tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 px-5 pt-4">
-          {card.vibe_tags.map((tag, i) => (
-            <span
-              key={`${tag || "tag"}-${i}`}
-              className="rounded-full bg-halo-primary/10 px-3 py-1 text-xs font-medium text-halo-primary"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
+  return prompts.reduce((best, current) => {
+    const bestLen = best.answer.length;
+    const currentLen = current.answer.length;
+    // Prefer answers between 20-150 characters (substantive but concise)
+    const isBestIdeal = bestLen >= 20 && bestLen <= 150;
+    const isCurrentIdeal = currentLen >= 20 && currentLen <= 150;
 
-      {/* Prompt answers */}
-      <div className="flex-1 space-y-3 px-5 py-4">
-        {card.prompt_answers.map((pa, i) => (
-          <div key={i}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-              {pa.question}
-            </p>
-            <p className="mt-1 text-sm text-gray-700">{pa.answer}</p>
-          </div>
-        ))}
+    if (isCurrentIdeal && !isBestIdeal) return current;
+    if (!isCurrentIdeal && isBestIdeal) return best;
+    if (currentLen > bestLen) return current;
+    return best;
+  });
+}
 
-        {card.prompt_answers.length === 0 && (
-          <p className="text-sm italic text-gray-400">
-            This person hasn&apos;t answered any prompts yet.
-          </p>
-        )}
-      </div>
+/**
+ * Generate quick snapshot lines from prompts
+ */
+function generateSnapshotLines(
+  prompts: { question: string; answer: string }[]
+): string[] {
+  if (prompts.length === 0) {
+    return ["Adventure seeker", "Still discovering", "Open to connection"];
+  }
 
-      {/* Action buttons — 44px touch targets */}
-      <div className="flex items-center justify-center gap-6 border-t px-5 py-4">
-        <button
-          onClick={onPass}
-          aria-label="Pass"
-          className="flex h-14 w-14 min-h-touch min-w-touch items-center justify-center rounded-full border-2 border-gray-300 text-gray-400 transition-colors hover:border-red-400 hover:text-red-400 active:bg-red-50"
-        >
-          <X className="h-7 w-7" />
-        </button>
+  return prompts.slice(0, 3).map((p) => {
+    const answer = p.answer.slice(0, 40).trim();
+    return answer.endsWith("...") ? answer : answer + (p.answer.length > 40 ? "…" : "");
+  });
+}
 
-        <button
-          onClick={onConnect}
-          aria-label="Connect"
-          className="flex h-14 w-14 min-h-touch min-w-touch items-center justify-center rounded-full border-2 border-halo-primary text-halo-primary transition-colors hover:bg-halo-primary hover:text-white active:bg-halo-primary/90"
-        >
-          <Heart className="h-7 w-7" />
-        </button>
-      </div>
-    </div>
+/**
+ * Route to appropriate card component
+ */
+function renderCard(
+  templateType: CardLayoutType,
+  card: DiscoveryCardData,
+  onPass: () => void,
+  onConnect: () => void
+) {
+  const commonProps = { onPass, onConnect };
+
+  switch (templateType) {
+    case "classic":
+      return (
+        <ClassicCard
+          data={{
+            card_id: card.card_id,
+            age: card.age,
+            location: card.location,
+            vibe_tags: card.vibe_tags,
+            prompt_answers: card.prompt_answers,
+          } as ClassicCardData}
+          {...commonProps}
+        />
+      );
+
+    case "quote":
+      return (
+        <QuoteCard
+          data={{
+            card_id: card.card_id,
+            age: card.age,
+            location: card.location,
+            vibe_tags: card.vibe_tags,
+            standout_prompt: selectStandoutPrompt(card.prompt_answers),
+            additional_prompts: card.prompt_answers.slice(1, 2),
+          } as QuoteCardData}
+          {...commonProps}
+        />
+      );
+
+    case "lifestyle":
+      return (
+        <LifestyleCard
+          data={{
+            card_id: card.card_id,
+            age: card.age,
+            location: card.location,
+            vibe_tags: card.vibe_tags,
+            lifestyle_badges: getLifestyleBadges(card.profile_data || {}),
+            bio_prompt:
+              card.prompt_answers.length > 0
+                ? card.prompt_answers[0]
+                : undefined,
+          } as LifestyleCardData}
+          {...commonProps}
+        />
+      );
+
+    default:
+      return (
+        <ClassicCard
+          data={{
+            card_id: card.card_id,
+            age: card.age,
+            location: card.location,
+            vibe_tags: card.vibe_tags,
+            prompt_answers: card.prompt_answers,
+          } as ClassicCardData}
+          {...commonProps}
+        />
+      );
+  }
+}
+
+export function DiscoveryCard({
+  card,
+  templateType,
+  onPass,
+  onConnect,
+}: DiscoveryCardProps) {
+  return useMemo(
+    () => renderCard(templateType, card, onPass, onConnect),
+    [templateType, card, onPass, onConnect]
   );
 }
