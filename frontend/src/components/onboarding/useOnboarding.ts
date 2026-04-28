@@ -15,6 +15,7 @@ type OnboardingState = {
   lifestyle_habits: Record<string, string>;
   connection_style: Record<string, string>;
   interests: string[];
+  bio: string;
   prompts: Array<{ prompt_id: string; question: string; answer: string }>;
 };
 
@@ -29,6 +30,7 @@ const INITIAL_STATE: OnboardingState = {
   lifestyle_habits: {},
   connection_style: {},
   interests: [],
+  bio: "",
   prompts: [],
 };
 
@@ -71,6 +73,7 @@ export function useOnboarding() {
           lifestyle_habits: (pd.lifestyle_habits as Record<string, string>) || {},
           connection_style: (pd.connection_style as Record<string, string>) || {},
           interests: (pd.interests as string[]) || [],
+          bio: (pd.bio as string) || "",
           prompts:
             (pd.prompts as Array<{
               prompt_id: string;
@@ -116,7 +119,7 @@ export function useOnboarding() {
           payload.coarse_location = merged.coarse_location;
         }
 
-        // Package gender/sexual_profile/interested_in/vibe/relationship_intentions/lifestyle_habits/connection_style/interests/prompts into profile_data.
+        // Package gender/sexual_profile/interested_in/vibe/relationship_intentions/lifestyle_habits/connection_style/interests/bio/prompts into profile_data.
         const profileData: Record<string, unknown> = {};
         if (merged.gender) profileData.gender = merged.gender;
         if (merged.sexual_profile) profileData.sexual_profile = merged.sexual_profile;
@@ -126,6 +129,7 @@ export function useOnboarding() {
         if (Object.keys(merged.lifestyle_habits).length > 0) profileData.lifestyle_habits = merged.lifestyle_habits;
         if (Object.keys(merged.connection_style).length > 0) profileData.connection_style = merged.connection_style;
         if (merged.interests.length > 0) profileData.interests = merged.interests;
+        if (merged.bio) profileData.bio = merged.bio;
         if (merged.prompts.length > 0) profileData.prompts = merged.prompts;
         if (Object.keys(profileData).length > 0) {
           payload.profile_data = profileData;

@@ -1,4 +1,4 @@
-export type CardLayoutType = "classic" | "quote" | "lifestyle" | "compatibility";
+export type CardLayoutType = "classic" | "quote" | "lifestyle" | "compatibility" | "bento";
 
 export interface CardTemplateConfig {
   type: CardLayoutType;
@@ -11,6 +11,7 @@ const CARD_TEMPLATES: Record<CardLayoutType, CardTemplateConfig> = {
   quote: { type: "quote", priority: 1.8, weight: 0.9 },
   lifestyle: { type: "lifestyle", priority: 1.6, weight: 0.9 },
   compatibility: { type: "compatibility", priority: 1.7, weight: 0.9 },
+  bento: { type: "bento", priority: 1.9, weight: 0.95 },
 };
 
 export class CardTemplateSelector {

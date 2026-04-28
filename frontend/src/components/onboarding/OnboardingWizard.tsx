@@ -245,8 +245,9 @@ export function OnboardingWizard() {
 
       {step === 7 && (
         <PromptsStep
+          bio={state.bio}
           prompts={state.prompts}
-          onNext={(prompts) => nextStep({ prompts })}
+          onNext={(bio, prompts) => nextStep({ bio, prompts })}
           onBack={prevStep}
           saving={saving}
         />
@@ -1182,18 +1183,22 @@ function InterestsStep({
 // ── Step 7: Prompts ──────────────────────────────────────
 
 function PromptsStep({
+  bio,
   prompts,
   onNext,
   onBack,
   saving,
 }: {
+  bio: string;
   prompts: Array<{ prompt_id: string; question: string; answer: string }>;
   onNext: (
+    bio: string,
     prompts: Array<{ prompt_id: string; question: string; answer: string }>
   ) => void;
   onBack: () => void;
   saving: boolean;
 }) {
+  const [bioText, setBioText] = useState(bio);
   const [answers, setAnswers] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
     prompts.forEach((p) => {
@@ -1210,26 +1215,54 @@ function PromptsStep({
         answer: answers[q.id].trim(),
       })
     );
-    onNext(result);
+    onNext(bioText.trim(), result);
   }
 
   const filledCount = PROMPT_QUESTIONS.filter(
     (q) => answers[q.id]?.trim()
   ).length;
+  const isBioValid = bioText.trim().length > 0;
+  const canSubmit = isBioValid && filledCount > 0;
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold">Share a bit about yourself</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Answer at least 1 prompt. These will show up on your profile.
+          Answer at least 1 prompt and tell us a bit about yourself.
         </p>
       </div>
 
+      {/* Bio Section - Required */}
+      <div className="space-y-3">
+        <label htmlFor="bio" className="block text-sm font-semibold text-gray-900">
+          Your Bio <span className="text-red-500">*</span>
+        </label>
+        <textarea
+          id="bio"
+          rows={3}
+          placeholder="Tell us who you are in a few sentences. What makes you interesting? What should people know about you?"
+          value={bioText}
+          onChange={(e) => setBioText(e.target.value)}
+          maxLength={500}
+          className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-halo-primary focus:outline-none focus:ring-2 focus:ring-halo-primary/20 resize-none"
+        />
+        <p className="text-xs text-gray-400">
+          {bioText.length}/500 characters
+        </p>
+        {!isBioValid && bioText.length === 0 && (
+          <p className="text-xs text-red-600">Bio is required</p>
+        )}
+      </div>
+
+      {/* Prompts Section */}
       <div className="space-y-4">
+        <label className="block text-sm font-semibold text-gray-900">
+          Icebreaker Prompts <span className="text-red-500">*</span>
+        </label>
         {PROMPT_QUESTIONS.map((q) => (
           <div key={q.id} className="space-y-2">
-            <label htmlFor={q.id} className="block text-sm font-semibold text-gray-900">
+            <label htmlFor={q.id} className="block text-sm font-medium text-gray-700">
               {q.question}
             </label>
             <textarea
@@ -1252,7 +1285,7 @@ function PromptsStep({
 
       <div className="flex items-center justify-between py-3 px-3 bg-blue-50 rounded-lg">
         <p className="text-sm font-medium text-gray-700">
-          {filledCount} of {PROMPT_QUESTIONS.length} answered
+          {filledCount} of {PROMPT_QUESTIONS.length} prompts answered
         </p>
         <div className="flex gap-1">
           {PROMPT_QUESTIONS.map((q) => (
@@ -1277,7 +1310,7 @@ function PromptsStep({
         </button>
         <button
           onClick={handleNext}
-          disabled={filledCount === 0 || saving}
+          disabled={!canSubmit || saving}
           className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {saving ? "Completing…" : "Complete Profile"}

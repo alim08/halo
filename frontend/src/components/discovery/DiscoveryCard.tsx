@@ -15,6 +15,7 @@ import {
   SplitScreenCard,
   SplitScreenCardData,
 } from "./cardTypes/SplitScreenCard";
+import { BentoCard, BentoCardData } from "./cardTypes/BentoCard";
 import { CardLayoutType } from "@/lib/cardTemplates";
 import type { ComparisonProfile } from "@/lib/api";
 
@@ -134,6 +135,19 @@ function hasUsefulLifestyleData(card: DiscoveryCardData): boolean {
   const hasLifestyle = Object.values(lifestyle).some((value) => isUsefulText(value));
 
   return hasLifestyle || getInterests(card).length > 0 || hasValidPrompt(card.prompt_answers);
+}
+
+function hasEnoughBentoData(card: DiscoveryCardData): boolean {
+  const lifestyle = getLifestyleHabits(card);
+  const vibe = getProfileRecord(card.vibe ?? card.profile_data?.vibe);
+  const interests = getInterests(card);
+
+  const lifestyleCount = Object.keys(lifestyle).length;
+  const vibeCount = Object.keys(vibe).length;
+  const interestCount = interests.length;
+
+  // Need at least 4 data points across all categories
+  return lifestyleCount + vibeCount + interestCount >= 4;
 }
 
 function getProfileRecord(value: unknown): Record<string, unknown> {
@@ -257,6 +271,57 @@ function renderCard(
             profile_data: card.profile_data,
             prompt_answers: card.prompt_answers,
           } as LifestyleCardData}
+          {...commonProps}
+        />
+      );
+
+    case "bento":
+      if (!hasEnoughBentoData(card)) {
+        // Fallback to Lifestyle or Classic if not enough bento data
+        if (hasUsefulLifestyleData(card)) {
+          return (
+            <LifestyleCard
+              data={{
+                card_id: card.card_id,
+                age: card.age,
+                location: card.location,
+                lifestyle_habits: getLifestyleHabits(card),
+                interests: getInterests(card),
+                profile_data: card.profile_data,
+                prompt_answers: card.prompt_answers,
+              } as LifestyleCardData}
+              {...commonProps}
+            />
+          );
+        }
+        return (
+          <ClassicCard
+            data={{
+              card_id: card.card_id,
+              age: card.age,
+              location: card.location,
+              vibe_tags: card.vibe_tags,
+              prompt_answers: card.prompt_answers,
+            } as ClassicCardData}
+            {...commonProps}
+          />
+        );
+      }
+
+      return (
+        <BentoCard
+          data={{
+            card_id: card.card_id,
+            age: card.age,
+            location: card.location,
+            interests: getInterests(card),
+            lifestyle_habits: getLifestyleHabits(card),
+            vibe: getProfileRecord(card.vibe ?? card.profile_data?.vibe),
+            connection_style: getProfileRecord(
+              card.connection_style ?? card.profile_data?.connection_style
+            ),
+            profile_data: card.profile_data,
+          } as BentoCardData}
           {...commonProps}
         />
       );
