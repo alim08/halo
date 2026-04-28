@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isAuthenticated, api, MeResponse } from "@/lib/api";
+import { isAuthenticated, api, MeResponse, type ComparisonProfile } from "@/lib/api";
 import { DiscoveryStack } from "@/components/discovery/DiscoveryStack";
 
 export default function DiscoveryPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<ComparisonProfile | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -23,9 +24,11 @@ export default function DiscoveryPage() {
           router.replace("/onboarding");
           return;
         }
+        setCurrentUserProfile(me.profile_data as ComparisonProfile);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err: Error) => {
+        console.error("[Discovery] ❌ Error checking profile:", err.message);
         setError("Failed to load your profile.");
         setLoading(false);
       });
@@ -145,7 +148,7 @@ export default function DiscoveryPage() {
 
         {/* ── Center Card ── */}
         <section className="flex items-start justify-center py-2 lg:col-span-6 lg:items-center">
-          <DiscoveryStack />
+          <DiscoveryStack currentUserProfile={currentUserProfile} />
         </section>
 
         {/* ── Right Sidebar ── */}

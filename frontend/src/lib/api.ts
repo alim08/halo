@@ -105,8 +105,18 @@ export type AuthResponse = {
 export type MeResponse = {
   id: string;
   is_onboarded: boolean;
+  birthdate?: string;
   coarse_location?: string;
   profile_data: Record<string, unknown>;
+};
+
+export type ComparisonProfile = {
+  lifestyle_habits?: Record<string, unknown>;
+  lifestyle?: Record<string, unknown>;
+  vibe?: Record<string, unknown>;
+  connection_style?: Record<string, unknown>;
+  connection?: Record<string, unknown>;
+  interests?: string[];
 };
 
 export type DiscoveryCard = {
@@ -115,6 +125,11 @@ export type DiscoveryCard = {
   location: string;
   vibe_tags: string[];
   prompt_answers: { question: string; answer: string }[];
+  lifestyle_habits?: Record<string, unknown>;
+  vibe?: Record<string, unknown>;
+  connection_style?: Record<string, unknown>;
+  interests?: string[];
+  profile_data?: ComparisonProfile;
 };
 
 export type DiscoveryResponse = {

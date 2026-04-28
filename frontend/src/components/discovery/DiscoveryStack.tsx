@@ -1,14 +1,35 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { DiscoveryCard, DiscoveryCardData } from "./DiscoveryCard";
 import { useDiscovery } from "./useDiscovery";
+import { CardTemplateSelector, CardLayoutType } from "@/lib/cardTemplates";
+import { type ComparisonProfile } from "@/lib/api";
 
-export function DiscoveryStack() {
-  const { cards, loading, error, actPass, actConnect, isEmpty } =
-    useDiscovery();
+type DiscoveryStackProps = {
+  currentUserProfile: ComparisonProfile | null;
+};
+
+export function DiscoveryStack({ currentUserProfile }: DiscoveryStackProps) {
+  const {
+    cards,
+    currentUserProfile: profileFromHook,
+    loading,
+    error,
+    actPass,
+    actConnect,
+    isEmpty,
+  } = useDiscovery({ currentUserProfile });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchAlert, setMatchAlert] = useState<string | null>(null);
+
+  // Initialize template selector
+  const templateSelector = useMemo(() => new CardTemplateSelector(), []);
+
+  // Determine template for current card
+  const currentTemplate: CardLayoutType = useMemo(() => {
+    return templateSelector.selectTemplate();
+  }, [currentIndex, templateSelector]);
 
   const advance = useCallback(() => {
     setCurrentIndex((prev) => prev + 1);
@@ -35,8 +56,8 @@ export function DiscoveryStack() {
   if (loading && cards.length === 0) {
     return (
       <div className="text-center">
-        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-halo-primary border-t-transparent" />
-        <p className="mt-4 text-sm text-halo-on-surface-variant">Finding people...</p>
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="mt-4 text-sm text-on-surface-variant">Finding people...</p>
       </div>
     );
   }
@@ -76,6 +97,8 @@ export function DiscoveryStack() {
 
       <DiscoveryCard
         card={currentCard}
+        templateType={currentTemplate}
+        currentUserProfile={profileFromHook}
         onPass={handlePass}
         onConnect={handleConnect}
       />

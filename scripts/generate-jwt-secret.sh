@@ -17,11 +17,22 @@ fi
 
 SECRET="$(openssl rand -base64 48 | tr -d '\n')"
 
-if grep -q '^HALO_JWT_SIGNING_KEY=' "$ENV_FILE"; then
-  # macOS-compatible inline edit
-  sed -i '' "s|^HALO_JWT_SIGNING_KEY=.*|HALO_JWT_SIGNING_KEY=$SECRET|" "$ENV_FILE"
-else
-  echo "HALO_JWT_SIGNING_KEY=$SECRET" >> "$ENV_FILE"
-fi
+update_env_var() {
+  local key="$1"
+  local value="$2"
+  local file="$3"
 
-echo "Generated and saved HALO_JWT_SIGNING_KEY to $ENV_FILE"
+  if grep -q "^${key}=" "$file"; then
+    if [[ "$OSTYPE" == darwin* ]]; then
+      sed -i '' "s|^${key}=.*|${key}=${value}|" "$file"
+    else
+      sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+    fi
+  else
+    printf '\n%s=%s\n' "$key" "$value" >> "$file"
+  fi
+}
+
+update_env_var "HALO_JWT_SIGNING_KEY" "$SECRET" "$ENV_FILE"
+
+echo "Updated HALO_JWT_SIGNING_KEY in $ENV_FILE"

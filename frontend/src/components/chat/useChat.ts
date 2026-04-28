@@ -173,9 +173,9 @@ export function useChat(matchId: string, currentUserId: string) {
   }, [matchId, currentUserId, syncLatestMessages]);
 
   // ── Send message (optimistic) ──────────────────────────────────────
-  const sendMessage = useCallback(() => {
+  const sendMessage = useCallback(async () => {
     const body = composerText.trim();
-    if (!body) return;
+    if (!body) return false;
 
     pendingSeq.current += 1;
     const clientMessageId = generateClientMessageID();
@@ -193,30 +193,31 @@ export function useChat(matchId: string, currentUserId: string) {
     setMessages((prev) => [pendingMsg, ...prev]);
     setComposerText("");
 
-    // Fire REST POST
-    api.chat
-      .sendMessage(matchId, clientMessageId, body)
-      .then((res) => {
-        // Reconcile: replace the pending with server version
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === `pending-${clientMessageId}` ? res.message : m
-          )
-        );
-        seenIds.current.add(res.message.id);
+    try {
+      const res = await api.chat.sendMessage(matchId, clientMessageId, body);
 
-        // Pull latest server truth to keep both participants in sync.
-        syncLatestMessages().catch(() => {
-          // Best-effort sync.
-        });
-      })
-      .catch(() => {
-        // Mark as failed — remove the pending message
-        setMessages((prev) =>
-          prev.filter((m) => m.id !== `pending-${clientMessageId}`)
-        );
-        setError("Failed to send message. Please try again.");
+      // Reconcile: replace the pending with server version
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === `pending-${clientMessageId}` ? res.message : m
+        )
+      );
+      seenIds.current.add(res.message.id);
+
+      // Pull latest server truth to keep both participants in sync.
+      syncLatestMessages().catch(() => {
+        // Best-effort sync.
       });
+
+      return true;
+    } catch {
+      // Mark as failed — remove the pending message
+      setMessages((prev) =>
+        prev.filter((m) => m.id !== `pending-${clientMessageId}`)
+      );
+      setError("Failed to send message. Please try again.");
+      return false;
+    }
   }, [composerText, matchId, currentUserId, generateClientMessageID, syncLatestMessages]);
 
   // ── Load more (cursor pagination) ─────────────────────────────────
