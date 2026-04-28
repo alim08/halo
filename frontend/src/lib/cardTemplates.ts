@@ -70,7 +70,7 @@ function cleanValue(value: unknown): string | null {
 
   const cleaned = String(value).trim();
 
-  if (cleaned.length < 3) return null;
+  if (!cleaned) return null;
   if (["n/a", "none", "null", "undefined", "test"].includes(cleaned.toLowerCase())) {
     return null;
   }
