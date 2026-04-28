@@ -362,7 +362,7 @@ export function BentoCard({ data, onPass, onConnect }: BentoCardProps) {
   return (
     <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg">
       {/* Header: age & location */}
-      <div className="bg-gradient-to-r from-halo-primary to-halo-secondary px-5 py-4">
+      <div className="bg-gradient-to-r from-primary to-primary-container px-5 py-4">
         <p className="text-lg text-white">
           <span className="font-bold">{data.age}</span>
           <span className="font-medium"> · {formatLocation(data.location)}</span>
@@ -375,7 +375,7 @@ export function BentoCard({ data, onPass, onConnect }: BentoCardProps) {
           {tiles.map((tile, idx) => (
             <div
               key={`${tile.label}-${idx}`}
-              className="flex flex-col items-center justify-center rounded-xl bg-gradient-to-br from-halo-primary/5 to-halo-secondary/5 border border-halo-primary/10 px-4 py-5 transition-all hover:border-halo-primary/20 hover:shadow-sm"
+              className="flex flex-col items-center justify-center rounded-xl bg-gradient-to-br from-primary/5 to-primary-container/5 border border-primary/10 px-4 py-5 transition-all hover:border-primary/20 hover:shadow-sm"
             >
               <span className="text-3xl mb-2 leading-none">{tile.icon}</span>
               <span className="text-sm font-semibold text-gray-800 text-center line-clamp-2">
@@ -402,7 +402,7 @@ export function BentoCard({ data, onPass, onConnect }: BentoCardProps) {
         <button
           onClick={onConnect}
           aria-label="Connect"
-          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-halo-primary text-halo-primary transition-all hover:bg-halo-primary hover:text-white active:bg-halo-primary/90"
+          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-primary text-primary transition-all hover:bg-primary hover:text-white active:bg-primary/90"
         >
           <Heart className="h-7 w-7" />
         </button>

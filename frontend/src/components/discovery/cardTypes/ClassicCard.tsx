@@ -23,7 +23,7 @@ export function ClassicCard({ data, onPass, onConnect }: ClassicCardProps) {
   return (
     <div className="flex w-full max-w-sm flex-col rounded-2xl bg-white shadow-lg overflow-hidden">
       {/* Header: age & location */}
-      <div className="bg-gradient-to-r from-halo-primary to-halo-secondary px-5 py-4">
+      <div className="bg-gradient-to-r from-primary to-primary-container px-5 py-4">
         <p className="text-lg font-bold text-white">
           {data.age} · {data.location || "Somewhere nearby"}
         </p>
@@ -74,7 +74,7 @@ export function ClassicCard({ data, onPass, onConnect }: ClassicCardProps) {
         <button
           onClick={onConnect}
           aria-label="Connect"
-          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-halo-primary text-halo-primary transition-all hover:bg-halo-primary hover:text-white active:bg-halo-primary/90"
+          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-primary text-primary transition-all hover:bg-primary hover:text-white active:bg-primary/90"
         >
           <Heart className="h-7 w-7" />
         </button>

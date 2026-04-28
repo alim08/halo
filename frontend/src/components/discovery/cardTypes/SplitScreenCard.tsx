@@ -261,7 +261,7 @@ export function SplitScreenCard({ data, onPass, onConnect }: SplitScreenCardProp
 
   return (
     <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg">
-      <div className="bg-gradient-to-r from-halo-primary to-halo-secondary px-5 py-4">
+      <div className="bg-gradient-to-r from-primary to-primary-container px-5 py-4">
         <p className="text-lg text-white">
           <span className="font-bold">{data.age}</span>
           <span className="font-medium"> · {formatLocation(data.location)}</span>
@@ -288,7 +288,7 @@ export function SplitScreenCard({ data, onPass, onConnect }: SplitScreenCardProp
                   {row.me}
                 </p>
               </div>
-              <div className="rounded-xl bg-halo-primary/5 px-3 py-2.5">
+              <div className="rounded-xl bg-primary/5 px-3 py-2.5">
                 <p className="text-sm font-medium leading-snug text-gray-800">
                   {row.you}
                 </p>
@@ -314,7 +314,7 @@ export function SplitScreenCard({ data, onPass, onConnect }: SplitScreenCardProp
         <button
           onClick={onConnect}
           aria-label="Connect"
-          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-halo-primary text-halo-primary transition-all hover:bg-halo-primary hover:text-white active:bg-halo-primary/90"
+          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-primary text-primary transition-all hover:bg-primary hover:text-white active:bg-primary/90"
         >
           <Heart className="h-7 w-7" />
         </button>

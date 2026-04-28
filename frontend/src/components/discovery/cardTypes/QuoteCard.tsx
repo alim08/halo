@@ -24,15 +24,15 @@ export function QuoteCard({ data, onPass, onConnect }: QuoteCardProps) {
   return (
     <div className="flex w-full max-w-sm flex-col rounded-2xl bg-white shadow-lg overflow-hidden">
       {/* Header: age & location */}
-      <div className="bg-gradient-to-r from-halo-primary/80 to-halo-secondary/80 px-5 py-3">
+      <div className="bg-gradient-to-r from-primary/80 to-primary-container/80 px-5 py-3">
         <p className="text-base font-semibold text-white">
           {data.age} · {data.location || "Somewhere nearby"}
         </p>
       </div>
 
       {/* Standout quote section */}
-      <div className="flex-1 flex flex-col justify-center px-5 py-8 bg-gradient-to-br from-halo-primary/5 to-halo-secondary/5">
-        <p className="text-xs font-semibold uppercase tracking-widest text-halo-primary/70 mb-3">
+      <div className="flex-1 flex flex-col justify-center px-5 py-8 bg-gradient-to-br from-primary/5 to-primary-container/5">
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary/70 mb-3">
           {data.standout_prompt.question}
         </p>
         <p className="text-2xl font-semibold text-gray-900 leading-tight italic">
@@ -81,7 +81,7 @@ export function QuoteCard({ data, onPass, onConnect }: QuoteCardProps) {
         <button
           onClick={onConnect}
           aria-label="Connect"
-          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-halo-primary text-halo-primary transition-all hover:bg-halo-primary hover:text-white active:bg-halo-primary/90"
+          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-primary text-primary transition-all hover:bg-primary hover:text-white active:bg-primary/90"
         >
           <Heart className="h-7 w-7" />
         </button>

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isAuthenticated, api, MatchSummary } from "@/lib/api";
-import { MessageCircle } from "lucide-react";
 
 export default function MatchesPage() {
   const router = useRouter();
@@ -31,79 +30,100 @@ export default function MatchesPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-halo-surface">
-        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-halo-primary border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-surface">
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="mt-4 text-sm text-on-surface/60">Loading matches...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-halo-surface">
-        <p className="text-halo-error">{error}</p>
+      <div className="flex min-h-screen items-center justify-center bg-surface">
+        <p className="text-error">{error}</p>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-halo-surface">
-      {/* Header */}
-      <header className="glass sticky top-0 z-10 px-6 py-4 lg:px-10">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <span className="font-serif text-xl font-bold text-halo-primary">Halo</span>
-          <h1 className="font-serif text-lg font-semibold text-halo-on-surface">
-            Matches
-          </h1>
-          <div className="w-10" />
+    <div className="min-h-screen bg-surface">
+      {/* Top Nav */}
+      <header className="fixed inset-x-0 top-0 z-30 bg-gradient-to-r from-primary to-primary-container shadow-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+          <span className="text-2xl font-extrabold tracking-tight text-white">Halo</span>
+
+          <nav className="hidden items-center gap-8 md:flex">
+            <button
+              onClick={() => router.push("/discovery")}
+              className="text-sm font-medium text-white/70 transition-colors hover:text-white"
+            >
+              Discover
+            </button>
+            <button className="border-b-2 border-white pb-0.5 text-sm font-semibold text-white">
+              Matches
+            </button>
+            <button
+              onClick={() => router.push("/me")}
+              className="text-sm font-medium text-white/70 transition-colors hover:text-white"
+            >
+              Profile
+            </button>
+          </nav>
+
+          <div className="flex items-center gap-4">
+            <button
+              aria-label="Notifications"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <span className="material-symbols-outlined text-[22px]">notifications</span>
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl px-6 pb-24 pt-6">
+      {/* Content */}
+      <main className="mx-auto max-w-2xl px-6 pt-[calc(4rem+1.5rem)] pb-20">
         {matches.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-4xl bg-halo-surface-container-low px-8 py-16 text-center shadow-ambient">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-halo-secondary-container">
-              <MessageCircle className="h-8 w-8 text-halo-on-secondary-container" />
+          <div className="mt-4 flex flex-col items-center justify-center rounded-2xl border border-outline-variant bg-white p-10 text-center shadow-sm">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-container">
+              <span className="material-symbols-outlined text-[32px] text-primary">chat_bubble</span>
             </div>
-            <p className="mt-6 font-serif text-xl font-semibold text-halo-on-surface">
-              No matches yet
-            </p>
-            <p className="mt-2 text-halo-on-surface-variant">
+            <p className="mt-6 text-xl font-semibold text-on-surface">No matches yet</p>
+            <p className="mt-2 text-sm text-on-surface/60">
               Keep discovering to find your people.
             </p>
             <button
               onClick={() => router.push("/discovery")}
-              className="mt-6 rounded-full bg-gradient-to-r from-halo-primary to-halo-primary-container px-8 py-3 min-h-touch text-sm font-semibold text-halo-on-primary shadow-ambient transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              className="mt-6 rounded-full bg-gradient-to-r from-primary to-primary-container px-8 py-3 text-sm font-semibold text-on-primary shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98]"
             >
               Go to Discovery
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="mt-4 space-y-3">
             {matches.map((match) => (
               <button
                 key={match.match_id}
                 onClick={() => router.push(`/matches/${match.match_id}`)}
-                className="flex w-full items-center gap-4 rounded-2xl bg-halo-surface-container-low p-4 text-left shadow-sm transition-all hover:bg-white hover:shadow-ambient active:scale-[0.99]"
+                className="flex w-full items-center gap-4 rounded-2xl border border-outline-variant bg-white p-4 text-left shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
               >
-                {/* Avatar */}
-                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-halo-secondary-container">
-                  <span className="font-serif text-lg font-bold text-halo-on-secondary-container">
+                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-container">
+                  <span className="text-lg font-bold text-on-primary">
                     {match.partner.display_name.charAt(0).toUpperCase()}
                   </span>
                 </div>
-
                 <div className="min-w-0 flex-1">
-                  <p className="font-serif text-base font-semibold text-halo-on-surface">
+                  <p className="text-base font-semibold text-on-surface">
                     {match.partner.display_name}
                   </p>
-                  <p className="text-sm text-halo-on-surface-variant">
-                    {match.partner.location} · Level{" "}
-                    {match.current_connection_level}
+                  <p className="text-sm text-on-surface/60">
+                    {match.partner.location} · Level {match.current_connection_level}
                   </p>
                 </div>
-
                 {match.last_message_at && (
-                  <span className="flex-shrink-0 text-xs text-halo-outline">
+                  <span className="flex-shrink-0 text-xs text-on-surface/40">
                     {formatRelativeTime(match.last_message_at)}
                   </span>
                 )}
@@ -111,29 +131,32 @@ export default function MatchesPage() {
             ))}
           </div>
         )}
-      </div>
+      </main>
 
-      {/* Bottom nav */}
-      <nav className="glass fixed bottom-0 left-0 right-0 z-10">
+      {/* Mobile Bottom Nav */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-outline-variant bg-white/90 backdrop-blur-md lg:hidden">
         <div className="mx-auto flex max-w-md justify-around py-2">
           <button
             onClick={() => router.push("/discovery")}
-            className="min-h-touch rounded-full px-5 py-2 text-sm text-halo-on-surface-variant hover:text-halo-on-surface transition-colors"
+            className="flex min-h-[44px] flex-col items-center justify-center px-4 text-on-surface/50 transition-colors hover:text-on-surface"
           >
-            Discover
+            <span className="material-symbols-outlined text-[22px]">explore</span>
+            <span className="text-[10px] font-medium">Discover</span>
           </button>
-          <button className="min-h-touch rounded-full px-5 py-2 text-sm font-semibold text-halo-primary">
-            Matches
+          <button className="flex min-h-[44px] flex-col items-center justify-center px-4 text-primary">
+            <span className="material-symbols-outlined text-[22px]">chat_bubble</span>
+            <span className="text-[10px] font-semibold">Matches</span>
           </button>
           <button
             onClick={() => router.push("/me")}
-            className="min-h-touch rounded-full px-5 py-2 text-sm text-halo-on-surface-variant hover:text-halo-on-surface transition-colors"
+            className="flex min-h-[44px] flex-col items-center justify-center px-4 text-on-surface/50 transition-colors hover:text-on-surface"
           >
-            Profile
+            <span className="material-symbols-outlined text-[22px]">person</span>
+            <span className="text-[10px] font-medium">Profile</span>
           </button>
         </div>
       </nav>
-    </main>
+    </div>
   );
 }
 

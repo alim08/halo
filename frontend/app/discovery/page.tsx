@@ -56,27 +56,27 @@ export default function DiscoveryPage() {
   return (
     <div className="min-h-screen bg-surface">
       {/* ── Top Nav ── */}
-      <header className="fixed inset-x-0 top-0 z-30 border-b border-outline-variant bg-white/90 backdrop-blur-md">
+      <header className="fixed inset-x-0 top-0 z-30 bg-gradient-to-r from-primary to-primary-container shadow-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           {/* Logo */}
-          <span className="text-2xl font-extrabold tracking-tight text-primary">
+          <span className="text-2xl font-extrabold tracking-tight text-white">
             Halo
           </span>
 
           {/* Nav links */}
           <nav className="hidden items-center gap-8 md:flex">
-            <button className="border-b-2 border-primary pb-0.5 text-sm font-semibold text-primary">
+            <button className="border-b-2 border-white pb-0.5 text-sm font-semibold text-white">
               Discover
             </button>
             <button
               onClick={() => router.push("/matches")}
-              className="text-sm font-medium text-on-surface/50 transition-colors hover:text-on-surface"
+              className="text-sm font-medium text-white/70 transition-colors hover:text-white"
             >
               Matches
             </button>
             <button
               onClick={() => router.push("/me")}
-              className="text-sm font-medium text-on-surface/50 transition-colors hover:text-on-surface"
+              className="text-sm font-medium text-white/70 transition-colors hover:text-white"
             >
               Profile
             </button>
@@ -86,11 +86,11 @@ export default function DiscoveryPage() {
           <div className="flex items-center gap-4">
             <button
               aria-label="Notifications"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full text-on-surface/60 transition-colors hover:bg-surface-container hover:text-on-surface"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               <span className="material-symbols-outlined text-[22px]">notifications</span>
             </button>
-            <button className="hidden rounded-full bg-primary px-5 py-2 text-sm font-semibold text-on-primary shadow-sm transition-shadow hover:shadow-md md:block">
+            <button className="hidden rounded-full bg-white px-5 py-2 text-sm font-semibold text-primary shadow-sm transition-shadow hover:shadow-md md:block">
               Get Started
             </button>
           </div>
