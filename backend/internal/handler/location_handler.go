@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"time"
 	"strings"
+	"time"
 
 	"halo/backend/internal/handler/httputil"
 )
@@ -72,9 +72,7 @@ func (h *LocationHandler) SearchLocations(w http.ResponseWriter, r *http.Request
 	}
 
 	if len(query) < 2 {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("[]"))
+		httputil.EncodeJSON(w, http.StatusOK, []LocationSuggestion{})
 		return
 	}
 
@@ -141,12 +139,10 @@ func (h *LocationHandler) SearchLocations(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(suggestions)
+	httputil.EncodeJSON(w, http.StatusOK, suggestions)
 }
 
-//helper functions
+// helper functions
 func preferredDisplay(item NominatimResult) string {
 	if addr := formatLocationDisplay(item.Address); addr != "" {
 		return addr
@@ -215,7 +211,7 @@ func matchesQuery(display, query string) bool {
 	}
 
 	return strings.Contains(place, query)
-}	
+}
 
 // ReverseGeocode converts coordinates back to a location name.
 func (h *LocationHandler) ReverseGeocode(w http.ResponseWriter, r *http.Request) {
@@ -264,9 +260,7 @@ func (h *LocationHandler) ReverseGeocode(w http.ResponseWriter, r *http.Request)
 		display = result.Address.Country
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(ReverseGeocodeResult{Display: display})
+	httputil.EncodeJSON(w, http.StatusOK, ReverseGeocodeResult{Display: display})
 }
 
 func isPlaceLikeResult(addr NominatimAddress) bool {
