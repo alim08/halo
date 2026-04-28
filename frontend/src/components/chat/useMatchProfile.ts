@@ -82,19 +82,6 @@ export function useMatchProfile(matchId: string, currentUserId: string) {
     };
   }, [matchId, currentUserId, fetchProfile]);
 
-  // ── Manual refresh (call after sending a message) ──────────
-  useEffect(() => {
-    if (!matchId || !currentUserId) return;
-
-    const timer = window.setInterval(() => {
-      fetchProfile().catch(() => {
-        // Silent retry on next interval.
-      });
-    }, 3000);
-
-    return () => window.clearInterval(timer);
-  }, [matchId, currentUserId, fetchProfile]);
-
   const refreshProfile = useCallback(() => {
     fetchProfile();
   }, [fetchProfile]);
