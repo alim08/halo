@@ -68,22 +68,6 @@ function selectStandoutPrompt(
   });
 }
 
-/**
- * Generate quick snapshot lines from prompts
- */
-function generateSnapshotLines(
-  prompts: { question: string; answer: string }[]
-): string[] {
-  if (prompts.length === 0) {
-    return ["Adventure seeker", "Still discovering", "Open to connection"];
-  }
-
-  return prompts.slice(0, 3).map((p) => {
-    const answer = p.answer.slice(0, 40).trim();
-    return answer.endsWith("...") ? answer : answer + (p.answer.length > 40 ? "…" : "");
-  });
-}
-
 const JUNK_TEXT = new Set([
   "12",
   "n/a",
