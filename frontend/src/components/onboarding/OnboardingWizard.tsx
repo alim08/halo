@@ -254,7 +254,20 @@ export function OnboardingWizard() {
         )}
 
         {step === 1 && (
-          <VibeStep
+          <BasicsProfileStep
+            gender={state.gender}
+            sexual_profile={state.sexual_profile}
+            interested_in={state.interested_in}
+            onNext={(gender, sexual_profile, interested_in) =>
+              nextStep({ gender, sexual_profile, interested_in })
+            }
+            onBack={prevStep}
+            saving={saving}
+          />
+        )}
+
+        {step === 2 && (
+          <PersonalityVibeStep
             vibe={state.vibe}
             onNext={(vibe) => nextStep({ vibe })}
             onBack={prevStep}
@@ -262,110 +275,59 @@ export function OnboardingWizard() {
           />
         )}
 
-        {step === 2 && (
-          <TagsStep
-            selected={state.tags}
-            onNext={(tags) => nextStep({ tags })}
+        {step === 3 && (
+          <RelationshipIntentionsStep
+            intentions={state.relationship_intentions}
+            onNext={(relationship_intentions) =>
+              nextStep({ relationship_intentions })
+            }
             onBack={prevStep}
             saving={saving}
           />
         )}
 
-        {step === 3 && (
+        {step === 4 && (
+          <LifestyleStep
+            lifestyle={state.lifestyle_habits}
+            onNext={(lifestyle_habits) =>
+              nextStep({ lifestyle_habits })
+            }
+            onBack={prevStep}
+            saving={saving}
+          />
+        )}
+
+        {step === 5 && (
+          <ConnectionStyleStep
+            connectionStyle={state.connection_style}
+            onNext={(connection_style) =>
+              nextStep({ connection_style })
+            }
+            onBack={prevStep}
+            saving={saving}
+          />
+        )}
+
+        {step === 6 && (
+          <InterestsStep
+            selected={state.interests}
+            onNext={(interests) => nextStep({ interests })}
+            onBack={prevStep}
+            saving={saving}
+          />
+        )}
+
+        {step === 7 && (
           <PromptsStep
+            bio={state.bio}
             prompts={state.prompts}
-            onNext={(prompts) => nextStep({ prompts })}
+            onNext={(bio, prompts) => nextStep({ bio, prompts })}
             onBack={prevStep}
             saving={saving}
           />
         )}
       </div>
-
-      {step === 0 && (
-        <BasicsStep
-          birthdate={state.birthdate}
-          location={state.coarse_location}
-          onNext={(birthdate, location) =>
-            nextStep({ birthdate, coarse_location: location })
-          }
-          saving={saving}
-        />
-      )}
-
-      {step === 1 && (
-        <BasicsProfileStep
-          gender={state.gender}
-          sexual_profile={state.sexual_profile}
-          interested_in={state.interested_in}
-          onNext={(gender, sexual_profile, interested_in) =>
-            nextStep({ gender, sexual_profile, interested_in })
-          }
-          onBack={prevStep}
-          saving={saving}
-        />
-      )}
-
-      {step === 2 && (
-        <PersonalityVibeStep
-          vibe={state.vibe}
-          onNext={(vibe) => nextStep({ vibe })}
-          onBack={prevStep}
-          saving={saving}
-        />
-      )}
-
-      {step === 3 && (
-        <RelationshipIntentionsStep
-          intentions={state.relationship_intentions}
-          onNext={(relationship_intentions) =>
-            nextStep({ relationship_intentions })
-          }
-          onBack={prevStep}
-          saving={saving}
-        />
-      )}
-
-      {step === 4 && (
-        <LifestyleStep
-          lifestyle={state.lifestyle_habits}
-          onNext={(lifestyle_habits) =>
-            nextStep({ lifestyle_habits })
-          }
-          onBack={prevStep}
-          saving={saving}
-        />
-      )}
-
-      {step === 5 && (
-        <ConnectionStyleStep
-          connectionStyle={state.connection_style}
-          onNext={(connection_style) =>
-            nextStep({ connection_style })
-          }
-          onBack={prevStep}
-          saving={saving}
-        />
-      )}
-
-      {step === 6 && (
-        <InterestsStep
-          selected={state.interests}
-          onNext={(interests) => nextStep({ interests })}
-          onBack={prevStep}
-          saving={saving}
-        />
-      )}
-
-      {step === 7 && (
-        <PromptsStep
-          bio={state.bio}
-          prompts={state.prompts}
-          onNext={(bio, prompts) => nextStep({ bio, prompts })}
-          onBack={prevStep}
-          saving={saving}
-        />
-      )}
-    </div>
+    </>
   );
 }
 
