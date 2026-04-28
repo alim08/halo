@@ -82,7 +82,6 @@ export function useMatchProfile(matchId: string, currentUserId: string) {
     };
   }, [matchId, currentUserId, fetchProfile]);
 
-  // ── Manual refresh (call after sending a message) ──────────
   const refreshProfile = useCallback(() => {
     fetchProfile();
   }, [fetchProfile]);

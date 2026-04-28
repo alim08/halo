@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { isAuthenticated, api, MeResponse } from "@/lib/api";
 import { MessageList } from "@/components/chat/MessageList";
@@ -38,7 +38,34 @@ export default function ChatPage() {
     hasMore,
   } = useChat(matchId, me?.id ?? "");
 
-  const { profile } = useMatchProfile(matchId, me?.id ?? "");
+  const { profile, refreshProfile } = useMatchProfile(matchId, me?.id ?? "");
+
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current !== null) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
+  }, []);
+
+  async function handleSendMessage() {
+    const sent = await sendMessage();
+    if (!sent) return;
+
+    refreshProfile();
+
+    // The level update happens server-side during send, so a short follow-up
+    // refresh keeps the header/progress bar in sync even if WS delivery lags.
+    if (refreshTimerRef.current !== null) {
+      clearTimeout(refreshTimerRef.current);
+    }
+    refreshTimerRef.current = setTimeout(() => {
+      refreshTimerRef.current = null;
+      refreshProfile();
+    }, 600);
+  }
 
   if (!me) {
     return (
@@ -124,7 +151,7 @@ export default function ChatPage() {
       <MessageComposer
         value={composerText}
         onChange={setComposerText}
-        onSend={sendMessage}
+        onSend={handleSendMessage}
       />
     </main>
   );
