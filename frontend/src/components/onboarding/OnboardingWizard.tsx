@@ -346,9 +346,10 @@ function BasicsStep({
   };
 
   const handleLocationInputChange = (value: string) => {
-  setLocationSearch(value);
-  setLocationError("");
-  setShowLocationDropdown(true);
+    setLoc(value);
+    setLocationSearch(value);
+    setLocationError("");
+    setShowLocationDropdown(true);
   };
 
   const selectLocation = (suggestion: LocationSuggestion) => {
