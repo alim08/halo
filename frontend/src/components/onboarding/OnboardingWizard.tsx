@@ -268,9 +268,27 @@ function BasicsStep({
   onNext: (birthdate: string, location: string) => void;
   saving: boolean;
 }) {
-  const [month, setMonth] = useState(birthdate ? new Date(birthdate).getMonth() + 1 : 0);
-  const [day, setDay] = useState(birthdate ? new Date(birthdate).getDate() : 0);
-  const [year, setYear] = useState(birthdate ? new Date(birthdate).getFullYear() : 0);
+  const [initialYear, initialMonth, initialDay] = birthdate
+    ? (() => {
+        const parts = birthdate.split("-");
+        if (parts.length !== 3) return [0, 0, 0];
+
+        const [yearPart, monthPart, dayPart] = parts.map(Number);
+        if (
+          !Number.isInteger(yearPart) ||
+          !Number.isInteger(monthPart) ||
+          !Number.isInteger(dayPart)
+        ) {
+          return [0, 0, 0];
+        }
+
+        return [yearPart, monthPart, dayPart];
+      })()
+    : [0, 0, 0];
+
+  const [month, setMonth] = useState(initialMonth);
+  const [day, setDay] = useState(initialDay);
+  const [year, setYear] = useState(initialYear);
   
   const [loc, setLoc] = useState(location);
   const [locationSearch, setLocationSearch] = useState(location);
