@@ -4,19 +4,25 @@ import { useCallback, useEffect, useState } from "react";
 import { api, type ComparisonProfile } from "@/lib/api";
 import { DiscoveryCardData } from "./DiscoveryCard";
 
+// Gate console logs behind a debug flag to reduce production noise.
+const DEBUG = false;
+
 type ConnectResult = {
   status: "intent_recorded" | "matched";
   match_id?: string;
 };
 
+type UseDiscoveryProps = {
+  currentUserProfile: ComparisonProfile | null;
+};
+
 /**
  * useDiscovery fetches and manages the discovery card stack.
  * Provides actions for Pass and Connect that call the API.
+ * Expects currentUserProfile to be fetched at a higher level (e.g., page guard).
  */
-export function useDiscovery() {
+export function useDiscovery({ currentUserProfile }: UseDiscoveryProps) {
   const [cards, setCards] = useState<DiscoveryCardData[]>([]);
-  const [currentUserProfile, setCurrentUserProfile] =
-    useState<ComparisonProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEmpty, setIsEmpty] = useState(false);
@@ -25,19 +31,15 @@ export function useDiscovery() {
     try {
       setLoading(true);
       setError(null);
-      console.log("[Discovery] Fetching discovery feed...");
-      const [resp, me] = await Promise.all([
-        api.discovery.getFeed(),
-        api.me.get(),
-      ]);
+      if (DEBUG) console.log("[Discovery] Fetching discovery feed...");
+      const resp = await api.discovery.getFeed();
 
-      setCurrentUserProfile(me.profile_data as ComparisonProfile);
-      console.log("[Discovery] Received", resp.cards.length, "cards from API");
+      if (DEBUG) console.log("[Discovery] Received", resp.cards.length, "cards from API");
       if (resp.cards.length === 0) {
-        console.log("[Discovery] 📭 EMPTY discovery list - no available profiles");
+        if (DEBUG) console.log("[Discovery] 📭 EMPTY discovery list - no available profiles");
         setIsEmpty(true);
       } else {
-        console.log("[Discovery] ✅ Loaded", resp.cards.length, "cards");
+        if (DEBUG) console.log("[Discovery] ✅ Loaded", resp.cards.length, "cards");
         setCards(resp.cards);
         setIsEmpty(false);
       }

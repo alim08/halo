@@ -4,6 +4,11 @@ import { useCallback, useState, useMemo } from "react";
 import { DiscoveryCard, DiscoveryCardData } from "./DiscoveryCard";
 import { useDiscovery } from "./useDiscovery";
 import { CardTemplateSelector, CardLayoutType } from "@/lib/cardTemplates";
+import { type ComparisonProfile } from "@/lib/api";
+
+type DiscoveryStackProps = {
+  currentUserProfile: ComparisonProfile | null;
+};
 
 /**
  * DiscoveryStack manages a vertical stack of discovery cards.
@@ -12,16 +17,16 @@ import { CardTemplateSelector, CardLayoutType } from "@/lib/cardTemplates";
  *
  * Uses CardTemplateSelector to vary card layouts and avoid repetition.
  */
-export function DiscoveryStack() {
+export function DiscoveryStack({ currentUserProfile }: DiscoveryStackProps) {
   const {
     cards,
-    currentUserProfile,
+    currentUserProfile: profileFromHook,
     loading,
     error,
     actPass,
     actConnect,
     isEmpty,
-  } = useDiscovery();
+  } = useDiscovery({ currentUserProfile });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchAlert, setMatchAlert] = useState<string | null>(null);
 
@@ -102,7 +107,7 @@ export function DiscoveryStack() {
       <DiscoveryCard
         card={currentCard}
         templateType={currentTemplate}
-        currentUserProfile={currentUserProfile}
+        currentUserProfile={profileFromHook}
         onPass={handlePass}
         onConnect={handleConnect}
       />

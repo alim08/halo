@@ -34,6 +34,8 @@ const INITIAL_STATE: OnboardingState = {
   prompts: [],
 };
 
+const TOTAL_STEPS = 8;
+
 /**
  * Hook that manages onboarding state, persistence, and resumability.
  * On mount it fetches GET /v1/me to restore any partial progress.
@@ -60,10 +62,10 @@ export function useOnboarding() {
           return;
         }
 
-        // Restore partial progress from profile_data.
+        // Restore partial progress from profile_data and top-level fields.
         const pd = me.profile_data || {};
         const restored: OnboardingState = {
-          birthdate: (pd.birthdate as string) || "",
+          birthdate: me.birthdate || "",
           coarse_location: me.coarse_location || "",
           gender: (pd.gender as string) || "",
           sexual_profile: (pd.sexual_profile as string) || "",
@@ -102,7 +104,7 @@ export function useOnboarding() {
 
   // Persist current step's data to the server.
   const saveProgress = useCallback(
-    async (partial: Partial<OnboardingState>) => {
+    async (partial: Partial<OnboardingState>): Promise<boolean> => {
       setSaving(true);
       setError("");
 
@@ -158,15 +160,18 @@ export function useOnboarding() {
         if (me.is_onboarded) {
           console.log("[Onboarding] ✅ Complete! Navigating to /discovery");
           router.push("/discovery");
-          return;
+          return true;
         } else {
-          console.log("[Onboarding] ❌ Still not onboarded. Will increment step.");
+          console.log("[Onboarding] ❌ Still not onboarded after save.");
         }
+
+        return true;
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : "Failed to save progress";
         console.error("[Onboarding] ❌ Error saving progress:", message);
         setError(message);
+        return false;
       } finally {
         setSaving(false);
       }
@@ -176,8 +181,10 @@ export function useOnboarding() {
 
   const nextStep = useCallback(
     async (partial: Partial<OnboardingState>) => {
-      await saveProgress(partial);
-      setStep((s) => s + 1);
+      const saved = await saveProgress(partial);
+      if (!saved) return;
+
+      setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
     },
     [saveProgress]
   );
@@ -195,7 +202,7 @@ export function useOnboarding() {
     nextStep,
     prevStep,
     saveProgress,
-    totalSteps: 8,
+    totalSteps: TOTAL_STEPS,
   };
 }
 

@@ -68,6 +68,43 @@ function selectStandoutPrompt(
   });
 }
 
+/**
+ * Select additional prompts by filtering out the standout prompt
+ * and taking the next best available answer(s).
+ */
+function selectAdditionalPrompts(
+  prompts: { question: string; answer: string }[],
+  standoutPrompt: { question: string; answer: string }
+): { question: string; answer: string }[] {
+  if (prompts.length <= 1) {
+    return [];
+  }
+
+  // Filter out the standout prompt by matching both question and answer
+  const remaining = prompts.filter(
+    (p) => !(p.question === standoutPrompt.question && p.answer === standoutPrompt.answer)
+  );
+
+  if (remaining.length === 0) {
+    return [];
+  }
+
+  // Select the next best prompt from the remaining ones
+  const nextBest = remaining.reduce((best, current) => {
+    const bestLen = best.answer.length;
+    const currentLen = current.answer.length;
+    const isBestIdeal = bestLen >= 20 && bestLen <= 150;
+    const isCurrentIdeal = currentLen >= 20 && currentLen <= 150;
+
+    if (isCurrentIdeal && !isBestIdeal) return current;
+    if (!isCurrentIdeal && isBestIdeal) return best;
+    if (currentLen > bestLen) return current;
+    return best;
+  });
+
+  return [nextBest];
+}
+
 const JUNK_TEXT = new Set([
   "12",
   "n/a",
@@ -179,7 +216,8 @@ function renderCard(
         />
       );
 
-    case "quote":
+    case "quote": {
+      const standoutPrompt = selectStandoutPrompt(card.prompt_answers);
       return (
         <QuoteCard
           data={{
@@ -187,12 +225,13 @@ function renderCard(
             age: card.age,
             location: card.location,
             vibe_tags: card.vibe_tags,
-            standout_prompt: selectStandoutPrompt(card.prompt_answers),
-            additional_prompts: card.prompt_answers.slice(1, 2),
+            standout_prompt: standoutPrompt,
+            additional_prompts: selectAdditionalPrompts(card.prompt_answers, standoutPrompt),
           } as QuoteCardData}
           {...commonProps}
         />
       );
+    }
 
     case "compatibility": {
       const candidateProfile = getCandidateProfile(card);

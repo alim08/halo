@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"time"
 	"strings"
+
+	"halo/backend/internal/handler/httputil"
 )
 
 // LocationHandler handles location search and reverse geocoding.
@@ -65,7 +67,7 @@ type ReverseGeocodeResult struct {
 func (h *LocationHandler) SearchLocations(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	if query == "" {
-		http.Error(w, `{"error":"Query parameter 'q' is required"}`, http.StatusBadRequest)
+		httputil.BadRequest(w, "Query parameter 'q' is required")
 		return
 	}
 
@@ -83,7 +85,7 @@ func (h *LocationHandler) SearchLocations(w http.ResponseWriter, r *http.Request
 
 	req, err := http.NewRequest("GET", nominatimURL, nil)
 	if err != nil {
-		http.Error(w, `{"error":"Failed to create request"}`, http.StatusInternalServerError)
+		httputil.InternalError(w)
 		return
 	}
 
@@ -91,19 +93,19 @@ func (h *LocationHandler) SearchLocations(w http.ResponseWriter, r *http.Request
 
 	resp, err := h.httpClient.Do(req)
 	if err != nil {
-		http.Error(w, `{"error":"Failed to search locations"}`, http.StatusInternalServerError)
+		httputil.InternalError(w)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		http.Error(w, `{"error":"Location search failed"}`, http.StatusInternalServerError)
+		httputil.InternalError(w)
 		return
 	}
 
 	var results []NominatimResult
 	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		http.Error(w, `{"error":"Failed to parse response"}`, http.StatusInternalServerError)
+		httputil.InternalError(w)
 		return
 	}
 
@@ -221,7 +223,7 @@ func (h *LocationHandler) ReverseGeocode(w http.ResponseWriter, r *http.Request)
 	lon := r.URL.Query().Get("lon")
 
 	if lat == "" || lon == "" {
-		http.Error(w, `{"error":"lat and lon parameters are required"}`, http.StatusBadRequest)
+		httputil.BadRequest(w, "lat and lon parameters are required")
 		return
 	}
 
@@ -233,7 +235,7 @@ func (h *LocationHandler) ReverseGeocode(w http.ResponseWriter, r *http.Request)
 
 	req, err := http.NewRequest("GET", nominatimURL, nil)
 	if err != nil {
-		http.Error(w, `{"error":"Failed to create request"}`, http.StatusInternalServerError)
+		httputil.InternalError(w)
 		return
 	}
 
@@ -241,19 +243,19 @@ func (h *LocationHandler) ReverseGeocode(w http.ResponseWriter, r *http.Request)
 
 	resp, err := h.httpClient.Do(req)
 	if err != nil {
-		http.Error(w, `{"error":"Failed to reverse geocode"}`, http.StatusInternalServerError)
+		httputil.InternalError(w)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		http.Error(w, `{"error":"Reverse geocoding failed"}`, http.StatusInternalServerError)
+		httputil.InternalError(w)
 		return
 	}
 
 	var result NominatimResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		http.Error(w, `{"error":"Failed to parse response"}`, http.StatusInternalServerError)
+		httputil.InternalError(w)
 		return
 	}
 

@@ -328,7 +328,8 @@ function BasicsStep({
     setLocationLoading(true);
     setLocationError("");
     try {
-      const response = await fetch(`/v1/locations/search?q=${encodeURIComponent(query)}`);
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+      const response = await fetch(`${apiBase}/v1/locations/search?q=${encodeURIComponent(query)}`);
 
       if (!response.ok) {
         const text = await response.text();
@@ -373,7 +374,8 @@ function BasicsStep({
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const response = await fetch(`/v1/locations/reverse-geocode?lat=${latitude}&lon=${longitude}`);
+          const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+          const response = await fetch(`${apiBase}/v1/locations/reverse-geocode?lat=${latitude}&lon=${longitude}`);
 
           if (!response.ok) {
             const text = await response.text();
@@ -1342,7 +1344,14 @@ function PromptsStep({
 // ── Helpers ──────────────────────────────────────────────
 
 function getAge(dateStr: string): number {
-  const birth = new Date(dateStr);
+  // Parse YYYY-MM-DD to avoid timezone-sensitive UTC parsing.
+  // Construct date in local timezone using new Date(year, month-1, day).
+  const [yearStr, monthStr, dayStr] = dateStr.split("-");
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const day = parseInt(dayStr, 10);
+
+  const birth = new Date(year, month - 1, day);
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();

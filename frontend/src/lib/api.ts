@@ -105,6 +105,7 @@ export type AuthResponse = {
 export type MeResponse = {
   id: string;
   is_onboarded: boolean;
+  birthdate?: string;
   coarse_location?: string;
   profile_data: Record<string, unknown>;
 };

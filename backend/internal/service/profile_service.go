@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"halo/backend/internal/repository"
@@ -31,6 +32,7 @@ type UpsertProfileRequest struct {
 type MeResponse struct {
 	ID             string          `json:"id"`
 	IsOnboarded    bool            `json:"is_onboarded"`
+	Birthdate      *string         `json:"birthdate,omitempty"`
 	CoarseLocation string          `json:"coarse_location,omitempty"`
 	ProfileData    json.RawMessage `json:"profile_data"`
 }
@@ -45,9 +47,16 @@ func (s *ProfileService) GetMe(ctx context.Context, userID string) (*MeResponse,
 		return nil, fmt.Errorf("get user: %w", err)
 	}
 
+	var birthdate *string
+	if user.Birthdate != nil {
+		birthdateStr := user.Birthdate.Format("2006-01-02")
+		birthdate = &birthdateStr
+	}
+
 	return &MeResponse{
 		ID:             user.ID,
 		IsOnboarded:    user.IsOnboarded,
+		Birthdate:      birthdate,
 		CoarseLocation: user.CoarseLocation,
 		ProfileData:    user.ProfileData,
 	}, nil
@@ -90,10 +99,12 @@ func (s *ProfileService) UpsertProfile(ctx context.Context, userID string, req *
 	effectiveProfileData := mergeJSON(current.ProfileData, req.ProfileData)
 
 	// Check whether onboarding is now complete.
-	fmt.Printf("[Profile] Checking onboarding: birthdate=%v, location=%q, updating with new data\\n", 
-		effectiveBirthdate, effectiveLocation)
+	slog.Debug("checking onboarding complete",
+		"birthdate", effectiveBirthdate,
+		"location", effectiveLocation)
 	isOnboarded := CheckOnboardingComplete(effectiveBirthdate, effectiveLocation, effectiveProfileData)
-	fmt.Printf("[Profile] Onboarding complete? %v\\n", isOnboarded)
+	slog.Debug("onboarding status determined",
+		"is_onboarded", isOnboarded)
 
 	// Persist.
 	user, err := s.userRepo.UpdateProfile(ctx, userID, req.Birthdate, req.CoarseLocation, req.ProfileData, isOnboarded)
@@ -101,9 +112,16 @@ func (s *ProfileService) UpsertProfile(ctx context.Context, userID string, req *
 		return nil, fmt.Errorf("update profile: %w", err)
 	}
 
+	var birthdate *string
+	if user.Birthdate != nil {
+		birthdateStr := user.Birthdate.Format("2006-01-02")
+		birthdate = &birthdateStr
+	}
+
 	return &MeResponse{
 		ID:             user.ID,
 		IsOnboarded:    user.IsOnboarded,
+		Birthdate:      birthdate,
 		CoarseLocation: user.CoarseLocation,
 		ProfileData:    user.ProfileData,
 	}, nil
