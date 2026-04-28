@@ -15,10 +15,8 @@ export default function OnboardingPage() {
   }, [router]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-8">
-      <div className="w-full max-w-md">
-        <OnboardingWizard />
-      </div>
-    </main>
+    <div className="min-h-screen" style={{ backgroundColor: "#fff7fb" }}>
+      <OnboardingWizard />
+    </div>
   );
 }

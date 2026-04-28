@@ -7,26 +7,21 @@ type MessageListProps = {
   currentUserId: string;
 };
 
-/**
- * MessageList renders chat messages in chronological order (newest at bottom).
- * Messages from the current user are right-aligned, others left-aligned.
- */
 export function MessageList({ messages, currentUserId }: MessageListProps) {
   if (messages.length === 0) {
     return (
       <div className="flex items-center justify-center py-16">
-        <p className="text-sm text-gray-400">
+        <p className="font-serif italic text-halo-on-surface-variant">
           No messages yet. Say something!
         </p>
       </div>
     );
   }
 
-  // Messages come newest-first from the API; reverse for display.
   const sorted = [...messages].reverse();
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2.5">
       {sorted.map((msg) => {
         const isOwn = msg.sender_id === currentUserId;
         const isPending = msg.id.startsWith("pending-");
@@ -37,21 +32,19 @@ export function MessageList({ messages, currentUserId }: MessageListProps) {
             className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+              className={`max-w-[75%] rounded-3xl px-4 py-2.5 ${
                 isOwn
-                  ? "bg-halo-primary text-white"
-                  : "bg-gray-200 text-gray-900"
+                  ? "bg-gradient-to-r from-halo-primary to-halo-primary-container text-halo-on-primary"
+                  : "bg-halo-surface-container text-halo-on-surface"
               } ${isPending ? "opacity-60" : ""}`}
             >
-              <p className="text-sm">{msg.body}</p>
+              <p className="text-sm leading-relaxed">{msg.body}</p>
               <p
                 className={`mt-1 text-right text-[10px] ${
-                  isOwn ? "text-white/70" : "text-gray-400"
+                  isOwn ? "text-white/60" : "text-halo-outline"
                 }`}
               >
-                {isPending
-                  ? "Sending…"
-                  : formatTime(msg.created_at)}
+                {isPending ? "Sending..." : formatTime(msg.created_at)}
               </p>
             </div>
           </div>

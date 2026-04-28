@@ -9,10 +9,6 @@ type MessageComposerProps = {
   onSend: () => void;
 };
 
-/**
- * MessageComposer provides the chat input with a send button.
- * 44px touch targets per constitution.
- */
 export function MessageComposer({
   value,
   onChange,
@@ -46,26 +42,28 @@ export function MessageComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className="sticky bottom-0 flex items-center gap-2 border-t bg-white px-4 py-3"
+      className="glass sticky bottom-0 px-4 py-3 lg:px-6"
     >
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Type a message…"
-        className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm outline-none focus:border-halo-primary"
-        autoComplete="off"
-      />
-      <button
-        type="submit"
-        disabled={!value.trim()}
-        aria-label="Send message"
-        className="flex h-11 w-11 min-h-touch min-w-touch items-center justify-center rounded-full bg-halo-primary text-white transition-opacity disabled:opacity-40"
-      >
-        <Send className="h-5 w-5" />
-      </button>
+      <div className="mx-auto flex max-w-3xl items-center gap-3">
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Type a message..."
+          className="flex-1 rounded-full bg-halo-surface-container px-5 py-2.5 text-sm text-halo-on-surface placeholder:text-halo-outline outline-none transition-colors focus:bg-halo-surface-container-high focus:ring-1 focus:ring-halo-primary/20"
+          autoComplete="off"
+        />
+        <button
+          type="submit"
+          disabled={!value.trim()}
+          aria-label="Send message"
+          className="flex h-11 w-11 min-h-touch min-w-touch items-center justify-center rounded-full bg-gradient-to-r from-halo-primary to-halo-primary-container text-halo-on-primary shadow-ambient transition-all hover:shadow-ambient-lg disabled:opacity-40 active:scale-95"
+        >
+          <Send className="h-5 w-5" />
+        </button>
+      </div>
     </form>
   );
 }

@@ -10,13 +10,6 @@ type ConnectionLevelBarProps = {
 const LEVEL_LABELS = ["", "Silhouette", "Shape", "Soft focus", "Almost clear", "Full clarity"];
 const MAX_LEVEL = 5;
 
-/**
- * ConnectionLevelBar displays the current connection level and
- * progress toward the next level.
- *
- * Levels 1–5 map to photo blur variants:
- *   1 → blur_heavy, 2 → blur_med, 3–4 → blur_light, 5 → clear
- */
 export function ConnectionLevelBar({
   currentLevel,
   progress,
@@ -34,26 +27,26 @@ export function ConnectionLevelBar({
     : 0;
 
   return (
-    <div className="rounded-lg bg-white p-3 shadow-sm">
+    <div className="rounded-2xl bg-halo-surface-container-low p-4 shadow-sm">
       {/* Level indicator */}
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">
+          <span className="text-sm font-medium text-halo-on-surface">
             Connection Level
           </span>
-          <span className="rounded-full bg-halo-primary/10 px-2 py-0.5 text-xs font-semibold text-halo-primary">
+          <span className="rounded-full bg-halo-secondary-container px-2.5 py-0.5 text-xs font-semibold text-halo-on-secondary-container">
             {currentLevel}/{MAX_LEVEL}
           </span>
         </div>
-        <span className="text-xs text-gray-500">
+        <span className="font-serif text-sm italic text-halo-on-surface-variant">
           {LEVEL_LABELS[currentLevel] || ""}
         </span>
       </div>
 
       {/* Progress bar */}
-      <div className="mb-1.5 h-2 overflow-hidden rounded-full bg-gray-100">
+      <div className="mb-2 h-2 overflow-hidden rounded-full bg-halo-surface-container-high">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-halo-primary to-halo-primary/70 transition-all duration-500"
+          className="h-full rounded-full bg-gradient-to-r from-halo-primary to-halo-primary-container transition-all duration-500"
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -66,10 +59,10 @@ export function ConnectionLevelBar({
           return (
             <div
               key={level}
-              className={`h-2.5 w-2.5 rounded-full border-2 transition-colors ${
+              className={`h-3 w-3 rounded-full transition-colors ${
                 isReached
-                  ? "border-halo-primary bg-halo-primary"
-                  : "border-gray-300 bg-white"
+                  ? "bg-gradient-to-r from-halo-primary to-halo-primary-container"
+                  : "bg-halo-surface-container-high"
               }`}
               title={`Level ${level}: ${LEVEL_LABELS[level]}`}
             />
@@ -78,9 +71,9 @@ export function ConnectionLevelBar({
       </div>
 
       {/* Progress text */}
-      <p className="mt-2 text-center text-xs text-gray-500">
+      <p className="mt-3 text-center text-xs text-halo-on-surface-variant">
         {atMax ? (
-          "Photo fully revealed! 🎉"
+          "Photo fully revealed!"
         ) : (
           <>
             {progress.total_exchanged_counted} messages exchanged

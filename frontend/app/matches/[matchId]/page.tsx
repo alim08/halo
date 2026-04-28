@@ -42,7 +42,7 @@ export default function ChatPage() {
 
   if (!me) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-halo-surface">
         <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-halo-primary border-t-transparent" />
       </div>
     );
@@ -51,40 +51,41 @@ export default function ChatPage() {
   const partnerName = profile?.partner.display_name ?? "Chat";
 
   return (
-    <main className="flex min-h-screen flex-col bg-gray-50">
+    <main className="flex min-h-screen flex-col bg-halo-surface">
       {/* Header */}
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-white px-4 py-3">
-        <button
-          onClick={() => router.push("/matches")}
-          className="min-h-touch min-w-touch p-1"
-          aria-label="Back to matches"
-        >
-          <ArrowLeft className="h-5 w-5 text-gray-600" />
-        </button>
+      <header className="glass sticky top-0 z-10 px-4 py-3 lg:px-6">
+        <div className="mx-auto flex max-w-3xl items-center gap-3">
+          <button
+            onClick={() => router.push("/matches")}
+            className="min-h-touch min-w-touch flex items-center justify-center rounded-full p-2 transition-colors hover:bg-halo-surface-container"
+            aria-label="Back to matches"
+          >
+            <ArrowLeft className="h-5 w-5 text-halo-on-surface-variant" />
+          </button>
 
-        {/* Partner photo (Secure Reveal variant) */}
-        <SecureImage
-          photo={profile?.photo ?? null}
-          alt={partnerName}
-          fallbackInitial={partnerName.charAt(0).toUpperCase()}
-          className="h-9 w-9 rounded-full"
-        />
+          <SecureImage
+            photo={profile?.photo ?? null}
+            alt={partnerName}
+            fallbackInitial={partnerName.charAt(0).toUpperCase()}
+            className="h-10 w-10 rounded-full"
+          />
 
-        <div className="flex-1">
-          <h1 className="text-base font-semibold text-gray-900">
-            {partnerName}
-          </h1>
-          {profile && (
-            <p className="text-xs text-gray-500">
-              Level {profile.current_connection_level}
-            </p>
-          )}
+          <div className="flex-1">
+            <h1 className="font-serif text-base font-semibold text-halo-on-surface">
+              {partnerName}
+            </h1>
+            {profile && (
+              <p className="text-xs text-halo-on-surface-variant">
+                Level {profile.current_connection_level}
+              </p>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Connection level bar */}
       {profile?.progress && (
-        <div className="px-4 pt-2">
+        <div className="mx-auto w-full max-w-3xl px-4 pt-3 lg:px-6">
           <ConnectionLevelBar
             currentLevel={profile.current_connection_level}
             progress={profile.progress}
@@ -92,25 +93,25 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Sparks bar (shown when few messages) */}
+      {/* Sparks bar */}
       {sparks.length > 0 && messages.length < 5 && (
         <SparksBar sparks={sparks} onSelect={setComposerText} />
       )}
 
       {/* Messages */}
-      <div className="flex flex-1 flex-col-reverse overflow-y-auto px-4 py-2">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col-reverse overflow-y-auto px-4 py-3 lg:px-6">
         {loading && messages.length === 0 ? (
           <div className="flex items-center justify-center py-10">
             <div className="h-6 w-6 animate-spin rounded-full border-4 border-halo-primary border-t-transparent" />
           </div>
         ) : error ? (
-          <p className="py-10 text-center text-red-600">{error}</p>
+          <p className="py-10 text-center text-halo-error">{error}</p>
         ) : (
           <>
             {hasMore && (
               <button
                 onClick={loadMore}
-                className="mx-auto my-2 text-xs text-halo-primary"
+                className="mx-auto my-2 text-sm font-medium text-halo-primary hover:underline"
               >
                 Load earlier messages
               </button>

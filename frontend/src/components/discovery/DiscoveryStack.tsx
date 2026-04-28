@@ -4,11 +4,6 @@ import { useCallback, useState } from "react";
 import { DiscoveryCard, DiscoveryCardData } from "./DiscoveryCard";
 import { useDiscovery } from "./useDiscovery";
 
-/**
- * DiscoveryStack manages a vertical stack of discovery cards.
- * Shows one card at a time; swiping / tapping Pass/Connect advances to next.
- * When the stack runs out, fetches more cards automatically.
- */
 export function DiscoveryStack() {
   const { cards, loading, error, actPass, actConnect, isEmpty } =
     useDiscovery();
@@ -31,40 +26,37 @@ export function DiscoveryStack() {
     if (!card) return;
     const result = await actConnect(card.card_id);
     if (result?.status === "matched") {
-      setMatchAlert("It's a match! 🎉");
+      setMatchAlert("It's a match!");
       setTimeout(() => setMatchAlert(null), 3000);
     }
     advance();
   }, [cards, currentIndex, actConnect, advance]);
 
-  // Loading state.
   if (loading && cards.length === 0) {
     return (
       <div className="text-center">
         <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-halo-primary border-t-transparent" />
-        <p className="mt-4 text-sm text-gray-500">Finding people…</p>
+        <p className="mt-4 text-sm text-halo-on-surface-variant">Finding people...</p>
       </div>
     );
   }
 
-  // Error state.
   if (error) {
     return (
       <div className="text-center">
-        <p className="text-red-600">{error}</p>
+        <p className="text-halo-error">{error}</p>
       </div>
     );
   }
 
-  // Empty state — no more candidates.
   const currentCard: DiscoveryCardData | undefined = cards[currentIndex];
   if (!currentCard || isEmpty) {
     return (
-      <div className="text-center">
-        <p className="text-lg font-semibold text-gray-600">
+      <div className="mx-auto max-w-sm rounded-4xl bg-halo-surface-container-low p-10 text-center shadow-ambient">
+        <p className="font-serif text-xl font-semibold text-halo-on-surface">
           No more profiles to show
         </p>
-        <p className="mt-2 text-sm text-gray-400">
+        <p className="mt-2 text-sm text-halo-on-surface-variant">
           Check back later for new people.
         </p>
       </div>
@@ -72,23 +64,23 @@ export function DiscoveryStack() {
   }
 
   return (
-    <div className="relative w-full max-w-sm">
+    <div className="relative w-full max-w-md">
       {/* Match celebration overlay */}
       {matchAlert && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-halo-primary/90">
-          <p className="text-2xl font-bold text-white">{matchAlert}</p>
+        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-4xl bg-gradient-to-r from-halo-primary to-halo-primary-container">
+          <p className="font-serif text-3xl font-bold text-halo-on-primary">
+            {matchAlert}
+          </p>
         </div>
       )}
 
-      {/* Current card */}
       <DiscoveryCard
         card={currentCard}
         onPass={handlePass}
         onConnect={handleConnect}
       />
 
-      {/* Card counter */}
-      <p className="mt-3 text-center text-xs text-gray-400">
+      <p className="mt-4 text-center text-sm text-halo-on-surface-variant">
         {currentIndex + 1} / {cards.length}
       </p>
     </div>

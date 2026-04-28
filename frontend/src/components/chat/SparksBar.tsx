@@ -8,14 +8,9 @@ type SparksBarProps = {
   onSelect: (text: string) => void;
 };
 
-/**
- * SparksBar renders a horizontal scrollable row of conversation-starter pills.
- * Tapping a spark pre-fills the message composer.
- */
 export function SparksBar({ sparks, onSelect }: SparksBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to start on mount
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollLeft = 0;
@@ -25,9 +20,9 @@ export function SparksBar({ sparks, onSelect }: SparksBarProps) {
   if (!sparks.length) return null;
 
   return (
-    <div className="border-b bg-gray-50 px-4 py-2">
-      <p className="mb-1 text-xs font-medium text-gray-500">
-        Conversation Sparks ✨
+    <div className="mx-auto w-full max-w-3xl px-4 py-3 lg:px-6">
+      <p className="mb-2 text-xs font-semibold text-halo-on-surface-variant">
+        Conversation Sparks
       </p>
       <div
         ref={scrollRef}
@@ -38,7 +33,7 @@ export function SparksBar({ sparks, onSelect }: SparksBarProps) {
             key={spark.id}
             type="button"
             onClick={() => onSelect(spark.suggested_message)}
-            className="min-h-touch shrink-0 rounded-full border border-halo-primary/30 bg-white px-3 py-1.5 text-sm text-halo-primary transition-colors hover:bg-halo-primary/10 active:bg-halo-primary/20"
+            className="min-h-touch shrink-0 rounded-full bg-halo-secondary-container px-4 py-2 text-sm font-medium text-halo-on-secondary-container transition-all hover:shadow-sm active:scale-95"
           >
             {spark.label}
           </button>

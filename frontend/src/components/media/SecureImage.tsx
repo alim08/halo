@@ -7,18 +7,9 @@ type SecureImageProps = {
   photo: PhotoVariant | null;
   alt: string;
   className?: string;
-  /** Fallback shown when no photo or loading failed */
   fallbackInitial?: string;
 };
 
-/**
- * SecureImage renders a server-gated photo variant.
- *
- * - Fetches the signed URL from the match profile response
- * - Only displays the variant allowed by the connection level
- * - Never caches or infers higher-level variants client-side
- * - Shows a placeholder when no photo is available
- */
 export function SecureImage({
   photo,
   alt,
@@ -28,22 +19,20 @@ export function SecureImage({
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
-  // Reset state when photo URL changes (e.g., level-up re-fetch).
   useEffect(() => {
     setLoaded(false);
     setError(false);
   }, [photo?.url]);
 
-  // No photo available — show placeholder.
   if (!photo || !photo.url || error) {
     return (
       <div
-        className={`flex items-center justify-center bg-gradient-to-br from-halo-primary/20 to-halo-primary/40 ${className}`}
+        className={`flex items-center justify-center bg-gradient-to-br from-halo-primary/20 to-halo-primary-container/30 ${className}`}
         role="img"
         aria-label={alt}
       >
         {fallbackInitial ? (
-          <span className="text-2xl font-bold text-halo-primary/60">
+          <span className="font-serif text-2xl font-bold text-halo-primary/60">
             {fallbackInitial}
           </span>
         ) : (
@@ -61,9 +50,8 @@ export function SecureImage({
 
   return (
     <div className={`relative overflow-hidden ${className}`}>
-      {/* Loading shimmer */}
       {!loaded && (
-        <div className="absolute inset-0 animate-pulse bg-gray-200" />
+        <div className="absolute inset-0 animate-pulse bg-halo-surface-container" />
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -75,8 +63,7 @@ export function SecureImage({
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
       />
-      {/* Variant badge (dev only — can be removed in production) */}
-      <span className="absolute bottom-1 right-1 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white">
+      <span className="absolute bottom-1 right-1 rounded-full bg-halo-inverse-surface/50 px-2 py-0.5 text-[10px] text-halo-inverse-on-surface">
         {photo.variant.replace("_", " ")}
       </span>
     </div>

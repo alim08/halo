@@ -16,28 +16,35 @@ type DiscoveryCardProps = {
   onConnect: () => void;
 };
 
-/**
- * DiscoveryCard renders a text-only profile card.
- * Constitution: NO photos, NO image URLs, NO blur variants.
- * Only text content is shown — vibe tags, prompts, age, location.
- */
 export function DiscoveryCard({ card, onPass, onConnect }: DiscoveryCardProps) {
   return (
-    <div className="flex w-full max-w-sm flex-col rounded-2xl bg-white shadow-lg">
-      {/* Header: age & location */}
-      <div className="rounded-t-2xl bg-gradient-to-r from-halo-primary to-halo-secondary px-5 py-4">
-        <p className="text-lg font-bold text-white">
-          {card.age} · {card.location || "Somewhere nearby"}
-        </p>
+    <div className="w-full rounded-4xl bg-halo-surface-container-low shadow-ambient-lg overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-halo-primary to-halo-primary-container px-6 py-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
+            <span className="font-serif text-lg font-bold text-halo-on-primary">
+              {card.age}
+            </span>
+          </div>
+          <div>
+            <p className="font-serif text-xl font-bold text-halo-on-primary">
+              {card.location || "Somewhere nearby"}
+            </p>
+            <p className="text-sm text-halo-on-primary/70">
+              Age {card.age}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Vibe tags */}
+      {/* Value chips */}
       {card.vibe_tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 px-5 pt-4">
+        <div className="flex flex-wrap gap-2 px-6 pt-5">
           {card.vibe_tags.map((tag, i) => (
             <span
               key={`${tag || "tag"}-${i}`}
-              className="rounded-full bg-halo-primary/10 px-3 py-1 text-xs font-medium text-halo-primary"
+              className="rounded-full bg-halo-secondary-container px-4 py-1.5 text-sm font-medium text-halo-on-secondary-container"
             >
               {tag}
             </span>
@@ -46,29 +53,31 @@ export function DiscoveryCard({ card, onPass, onConnect }: DiscoveryCardProps) {
       )}
 
       {/* Prompt answers */}
-      <div className="flex-1 space-y-3 px-5 py-4">
+      <div className="space-y-4 px-6 py-5">
         {card.prompt_answers.map((pa, i) => (
           <div key={i}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+            <p className="font-serif text-sm font-semibold italic text-halo-on-surface-variant">
               {pa.question}
             </p>
-            <p className="mt-1 text-sm text-gray-700">{pa.answer}</p>
+            <p className="mt-1 leading-relaxed text-halo-on-surface">
+              {pa.answer}
+            </p>
           </div>
         ))}
 
         {card.prompt_answers.length === 0 && (
-          <p className="text-sm italic text-gray-400">
+          <p className="font-serif italic text-halo-on-surface-variant">
             This person hasn&apos;t answered any prompts yet.
           </p>
         )}
       </div>
 
-      {/* Action buttons — 44px touch targets */}
-      <div className="flex items-center justify-center gap-6 border-t px-5 py-4">
+      {/* Action buttons */}
+      <div className="flex items-center justify-center gap-8 px-6 pb-6">
         <button
           onClick={onPass}
           aria-label="Pass"
-          className="flex h-14 w-14 min-h-touch min-w-touch items-center justify-center rounded-full border-2 border-gray-300 text-gray-400 transition-colors hover:border-red-400 hover:text-red-400 active:bg-red-50"
+          className="flex h-16 w-16 min-h-touch min-w-touch items-center justify-center rounded-full bg-halo-surface-container text-halo-on-surface-variant transition-all hover:bg-halo-surface-container-highest hover:text-halo-error active:scale-95"
         >
           <X className="h-7 w-7" />
         </button>
@@ -76,7 +85,7 @@ export function DiscoveryCard({ card, onPass, onConnect }: DiscoveryCardProps) {
         <button
           onClick={onConnect}
           aria-label="Connect"
-          className="flex h-14 w-14 min-h-touch min-w-touch items-center justify-center rounded-full border-2 border-halo-primary text-halo-primary transition-colors hover:bg-halo-primary hover:text-white active:bg-halo-primary/90"
+          className="flex h-16 w-16 min-h-touch min-w-touch items-center justify-center rounded-full bg-gradient-to-r from-halo-primary to-halo-primary-container text-halo-on-primary shadow-ambient transition-all hover:shadow-ambient-lg active:scale-95"
         >
           <Heart className="h-7 w-7" />
         </button>
