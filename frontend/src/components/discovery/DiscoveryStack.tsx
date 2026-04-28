@@ -1,19 +1,42 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { DiscoveryCard, DiscoveryCardData } from "./DiscoveryCard";
 import { useDiscovery } from "./useDiscovery";
+import { CardTemplateSelector, CardLayoutType } from "@/lib/cardTemplates";
+import { type ComparisonProfile } from "@/lib/api";
+
+type DiscoveryStackProps = {
+  currentUserProfile: ComparisonProfile | null;
+};
 
 /**
  * DiscoveryStack manages a vertical stack of discovery cards.
  * Shows one card at a time; swiping / tapping Pass/Connect advances to next.
  * When the stack runs out, fetches more cards automatically.
+ *
+ * Uses CardTemplateSelector to vary card layouts and avoid repetition.
  */
-export function DiscoveryStack() {
-  const { cards, loading, error, actPass, actConnect, isEmpty } =
-    useDiscovery();
+export function DiscoveryStack({ currentUserProfile }: DiscoveryStackProps) {
+  const {
+    cards,
+    currentUserProfile: profileFromHook,
+    loading,
+    error,
+    actPass,
+    actConnect,
+    isEmpty,
+  } = useDiscovery({ currentUserProfile });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchAlert, setMatchAlert] = useState<string | null>(null);
+
+  // Initialize template selector
+  const templateSelector = useMemo(() => new CardTemplateSelector(), []);
+
+  // Determine template for current card
+  const currentTemplate: CardLayoutType = useMemo(() => {
+    return templateSelector.selectTemplate();
+  }, [currentIndex, templateSelector]);
 
   const advance = useCallback(() => {
     setCurrentIndex((prev) => prev + 1);
@@ -80,9 +103,11 @@ export function DiscoveryStack() {
         </div>
       )}
 
-      {/* Current card */}
+      {/* Current card with dynamic template */}
       <DiscoveryCard
         card={currentCard}
+        templateType={currentTemplate}
+        currentUserProfile={profileFromHook}
         onPass={handlePass}
         onConnect={handleConnect}
       />

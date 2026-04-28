@@ -111,6 +111,7 @@ func run() error {
 	wsHandler := handler.NewWSHandler(wsHub, jwtService)
 	matchProfileHandler := handler.NewMatchProfileHandler(secureRevealService, chatService, userRepo)
 	photoUploadHandler := handler.NewPhotoUploadHandler(photoUploadService)
+	locationHandler := handler.NewLocationHandler()
 
 	// ── Build router ─────────────────────────────────────────
 	router := handler.NewRouter(handler.Deps{
@@ -123,6 +124,7 @@ func run() error {
 		WSHandler:           wsHandler,
 		MatchProfileHandler: matchProfileHandler,
 		PhotoUploadHandler:  photoUploadHandler,
+		LocationHandler:     locationHandler,
 	})
 
 	// Wire OpenAPI endpoint.

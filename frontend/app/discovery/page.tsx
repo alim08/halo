@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isAuthenticated, api, MeResponse } from "@/lib/api";
+import { isAuthenticated, api, MeResponse, type ComparisonProfile } from "@/lib/api";
 import { DiscoveryStack } from "@/components/discovery/DiscoveryStack";
 
 export default function DiscoveryPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<ComparisonProfile | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -16,7 +17,7 @@ export default function DiscoveryPage() {
       return;
     }
 
-    // Verify user is onboarded before showing discovery.
+    // Verify user is onboarded and fetch profile once.
     api.me
       .get()
       .then((me: MeResponse) => {
@@ -24,9 +25,11 @@ export default function DiscoveryPage() {
           router.replace("/onboarding");
           return;
         }
+        setCurrentUserProfile(me.profile_data as ComparisonProfile);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err: Error) => {
+        console.error("[Discovery] ❌ Error checking profile:", err.message);
         setError("Failed to load your profile.");
         setLoading(false);
       });
@@ -60,7 +63,7 @@ export default function DiscoveryPage() {
       </header>
 
       <div className="flex flex-1 items-center justify-center p-4 pb-20">
-        <DiscoveryStack />
+        <DiscoveryStack currentUserProfile={currentUserProfile} />
       </div>
 
       {/* Bottom nav */}

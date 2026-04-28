@@ -61,9 +61,14 @@ func (s *SparksService) GetSparks(ctx context.Context, matchID, userID string) (
 }
 
 type profileData struct {
-	Vibe    string `json:"vibe"`
-	Tags    []string `json:"tags"`
-	Prompts []struct {
+	Gender             string            `json:"gender"`
+	SexualProfile      string            `json:"sexual_profile"`
+	InterestedIn       []string          `json:"interested_in"`
+	Vibe               map[string]string `json:"vibe"`
+	LifestyleHabits    map[string]string `json:"lifestyle_habits"`
+	IntimacyQuestions  map[string]string `json:"intimacy_questions"`
+	Interests          []string          `json:"interests"`
+	Prompts            []struct {
 		Question string `json:"question"`
 		Answer   string `json:"answer"`
 	} `json:"prompts"`
@@ -86,27 +91,44 @@ func generateSparks(viewer, partner *model.User) []Spark {
 	sparks := make([]Spark, 0, 5)
 	id := 1
 
-	// 1. Shared vibe spark.
-	if vp.Vibe != "" && vp.Vibe == pp.Vibe {
+	// 1. Shared sexual profile spark.
+	if vp.SexualProfile != "" && vp.SexualProfile == pp.SexualProfile {
 		sparks = append(sparks, Spark{
 			ID:               fmt.Sprintf("spark_%d", id),
-			Label:            fmt.Sprintf("Shared Vibe: %s", vp.Vibe),
-			SuggestedMessage: fmt.Sprintf("I saw we both vibe with %s — what does that mean to you?", vp.Vibe),
+			Label:            fmt.Sprintf("We're both %s", vp.SexualProfile),
+			SuggestedMessage: fmt.Sprintf("I love that we're both %s — what's something important to you in that context?", vp.SexualProfile),
 		})
 		id++
 	}
 
-	// 2. Shared tag sparks.
-	viewerTags := make(map[string]struct{}, len(vp.Tags))
-	for _, t := range vp.Tags {
-		viewerTags[t] = struct{}{}
+	// 2. Shared vibe sparks (check all vibe categories).
+	if vp.Vibe != nil && pp.Vibe != nil {
+		for key, viewerValue := range vp.Vibe {
+			if partnerValue, ok := pp.Vibe[key]; ok && viewerValue != "" && partnerValue == viewerValue {
+				sparks = append(sparks, Spark{
+					ID:               fmt.Sprintf("spark_%d", id),
+					Label:            fmt.Sprintf("Shared %s: %s", formatVibeKey(key), viewerValue),
+					SuggestedMessage: fmt.Sprintf("I noticed we're both %s — what does that mean to you?", viewerValue),
+				})
+				id++
+				if len(sparks) >= 3 {
+					break
+				}
+			}
+		}
 	}
-	for _, t := range pp.Tags {
-		if _, ok := viewerTags[t]; ok {
+
+	// 3. Shared interests sparks.
+	viewerInterests := make(map[string]struct{}, len(vp.Interests))
+	for _, i := range vp.Interests {
+		viewerInterests[i] = struct{}{}
+	}
+	for _, i := range pp.Interests {
+		if _, ok := viewerInterests[i]; ok {
 			sparks = append(sparks, Spark{
 				ID:               fmt.Sprintf("spark_%d", id),
-				Label:            fmt.Sprintf("You both like: %s", t),
-				SuggestedMessage: fmt.Sprintf("I noticed we both enjoy %s — tell me more about that!", strings.ToLower(t)),
+				Label:            fmt.Sprintf("You both enjoy: %s", i),
+				SuggestedMessage: fmt.Sprintf("I noticed we both enjoy %s — tell me more about that!", strings.ToLower(i)),
 			})
 			id++
 			if len(sparks) >= 3 {
@@ -115,7 +137,7 @@ func generateSparks(viewer, partner *model.User) []Spark {
 		}
 	}
 
-	// 3. Partner prompt-based sparks.
+	// 4. Partner prompt-based sparks.
 	for _, p := range pp.Prompts {
 		if p.Answer != "" && len(sparks) < 5 {
 			sparks = append(sparks, Spark{
@@ -127,7 +149,7 @@ func generateSparks(viewer, partner *model.User) []Spark {
 		}
 	}
 
-	// 4. Fallback sparks to ensure minimum of 3.
+	// 5. Fallback sparks to ensure minimum of 3.
 	fallbacks := []Spark{
 		{Label: "Deep question", SuggestedMessage: "What's something you're passionate about that most people don't know?"},
 		{Label: "Adventure starter", SuggestedMessage: "If we could go anywhere right now, where would you take me?"},
@@ -153,4 +175,15 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen-1] + "…"
+}
+
+// formatVibeKey converts snake_case keys to Title Case (e.g., "energy_level" -> "Energy Level").
+func formatVibeKey(key string) string {
+	words := strings.Split(key, "_")
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
 }

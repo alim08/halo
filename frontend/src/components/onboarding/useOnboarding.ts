@@ -7,18 +7,34 @@ import { api, type MeResponse } from "@/lib/api";
 type OnboardingState = {
   birthdate: string;
   coarse_location: string;
+  gender: string;
+  sexual_profile: string;
+  interested_in: string[];
   vibe: Record<string, string>;
-  tags: Array<{ type: string; label: string }>;
+  relationship_intentions: string[];
+  lifestyle_habits: Record<string, string>;
+  connection_style: Record<string, string>;
+  interests: string[];
+  bio: string;
   prompts: Array<{ prompt_id: string; question: string; answer: string }>;
 };
 
 const INITIAL_STATE: OnboardingState = {
   birthdate: "",
   coarse_location: "",
+  gender: "",
+  sexual_profile: "",
+  interested_in: [],
   vibe: {},
-  tags: [],
+  relationship_intentions: [],
+  lifestyle_habits: {},
+  connection_style: {},
+  interests: [],
+  bio: "",
   prompts: [],
 };
+
+const TOTAL_STEPS = 8;
 
 /**
  * Hook that manages onboarding state, persistence, and resumability.
@@ -46,14 +62,20 @@ export function useOnboarding() {
           return;
         }
 
-        // Restore partial progress from profile_data.
+        // Restore partial progress from profile_data and top-level fields.
         const pd = me.profile_data || {};
         const restored: OnboardingState = {
-          birthdate: (pd.birthdate as string) || "",
+          birthdate: me.birthdate || "",
           coarse_location: me.coarse_location || "",
+          gender: (pd.gender as string) || "",
+          sexual_profile: (pd.sexual_profile as string) || "",
+          interested_in: (pd.interested_in as string[]) || [],
           vibe: (pd.vibe as Record<string, string>) || {},
-          tags:
-            (pd.tags as Array<{ type: string; label: string }>) || [],
+          relationship_intentions: (pd.relationship_intentions as string[]) || [],
+          lifestyle_habits: (pd.lifestyle_habits as Record<string, string>) || {},
+          connection_style: (pd.connection_style as Record<string, string>) || {},
+          interests: (pd.interests as string[]) || [],
+          bio: (pd.bio as string) || "",
           prompts:
             (pd.prompts as Array<{
               prompt_id: string;
@@ -82,7 +104,7 @@ export function useOnboarding() {
 
   // Persist current step's data to the server.
   const saveProgress = useCallback(
-    async (partial: Partial<OnboardingState>) => {
+    async (partial: Partial<OnboardingState>): Promise<boolean> => {
       setSaving(true);
       setError("");
 
@@ -99,14 +121,28 @@ export function useOnboarding() {
           payload.coarse_location = merged.coarse_location;
         }
 
-        // Package vibe/tags/prompts into profile_data.
+        // Package gender/sexual_profile/interested_in/vibe/relationship_intentions/lifestyle_habits/connection_style/interests/bio/prompts into profile_data.
         const profileData: Record<string, unknown> = {};
+        if (merged.gender) profileData.gender = merged.gender;
+        if (merged.sexual_profile) profileData.sexual_profile = merged.sexual_profile;
+        if (merged.interested_in.length > 0) profileData.interested_in = merged.interested_in;
         if (Object.keys(merged.vibe).length > 0) profileData.vibe = merged.vibe;
-        if (merged.tags.length > 0) profileData.tags = merged.tags;
+        if (merged.relationship_intentions.length > 0) profileData.relationship_intentions = merged.relationship_intentions;
+        if (Object.keys(merged.lifestyle_habits).length > 0) profileData.lifestyle_habits = merged.lifestyle_habits;
+        if (Object.keys(merged.connection_style).length > 0) profileData.connection_style = merged.connection_style;
+        if (merged.interests.length > 0) profileData.interests = merged.interests;
+        if (merged.bio) profileData.bio = merged.bio;
         if (merged.prompts.length > 0) profileData.prompts = merged.prompts;
         if (Object.keys(profileData).length > 0) {
           payload.profile_data = profileData;
         }
+
+        console.log("[Onboarding] Sending profile update:", {
+          birthdate: payload.birthdate,
+          coarseLocation: payload.coarse_location,
+          profileDataKeys: Object.keys(profileData),
+          profileData,
+        });
 
         const me = await api.me.updateProfile(
           payload as {
@@ -116,14 +152,26 @@ export function useOnboarding() {
           }
         );
 
+        console.log("[Onboarding] Server response:", {
+          is_onboarded: me.is_onboarded,
+          has_profile_data: !!me.profile_data,
+        });
+
         if (me.is_onboarded) {
+          console.log("[Onboarding] ✅ Complete! Navigating to /discovery");
           router.push("/discovery");
-          return;
+          return true;
+        } else {
+          console.log("[Onboarding] ❌ Still not onboarded after save.");
         }
+
+        return true;
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : "Failed to save progress";
+        console.error("[Onboarding] ❌ Error saving progress:", message);
         setError(message);
+        return false;
       } finally {
         setSaving(false);
       }
@@ -132,9 +180,11 @@ export function useOnboarding() {
   );
 
   const nextStep = useCallback(
-    (partial: Partial<OnboardingState>) => {
-      saveProgress(partial);
-      setStep((s) => s + 1);
+    async (partial: Partial<OnboardingState>) => {
+      const saved = await saveProgress(partial);
+      if (!saved) return;
+
+      setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
     },
     [saveProgress]
   );
@@ -152,15 +202,19 @@ export function useOnboarding() {
     nextStep,
     prevStep,
     saveProgress,
-    totalSteps: 4,
+    totalSteps: TOTAL_STEPS,
   };
 }
 
 /** Determine the first incomplete onboarding step. */
 function computeResumeStep(s: OnboardingState): number {
   if (!s.birthdate || !s.coarse_location) return 0;
-  if (Object.keys(s.vibe).length === 0) return 1;
-  if (s.tags.length === 0) return 2;
-  if (s.prompts.length === 0) return 3;
-  return 3; // all filled — show last step for final submit
+  if (!s.gender || !s.sexual_profile || s.interested_in.length === 0) return 1;
+  if (Object.keys(s.vibe).length === 0) return 2;
+  if (s.relationship_intentions.length === 0) return 3;
+  if (Object.keys(s.lifestyle_habits).length === 0) return 4;
+  if (Object.keys(s.connection_style).length === 0) return 5;
+  if (s.interests.length === 0) return 6;
+  if (s.prompts.length === 0) return 7;
+  return 7; // all filled — show last step for final submit
 }

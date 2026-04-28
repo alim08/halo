@@ -42,7 +42,7 @@ func ValidateBirthdate(birthdate *time.Time) error {
 
 // onboardingRequiredFields are the profile_data keys that must be present
 // for a user to be considered fully onboarded.
-var onboardingRequiredFields = []string{"vibe", "tags", "prompts"}
+var onboardingRequiredFields = []string{"gender", "sexual_profile", "interested_in", "vibe", "relationship_intentions", "lifestyle_habits", "connection_style", "interests", "prompts"}
 
 // CheckOnboardingComplete determines whether a user has completed onboarding
 // based on the required fields in their profile_data, plus birthdate and location.
@@ -62,7 +62,8 @@ func CheckOnboardingComplete(birthdate *time.Time, coarseLocation string, profil
 
 	for _, key := range onboardingRequiredFields {
 		val, ok := data[key]
-		if !ok || len(val) == 0 || string(val) == "null" || string(val) == "\"\"" || string(val) == "[]" || string(val) == "{}" {
+		found := ok && len(val) > 0 && string(val) != "null" && string(val) != "\"\"" && string(val) != "[]" && string(val) != "{}"
+		if !found {
 			return false
 		}
 	}

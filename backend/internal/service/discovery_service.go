@@ -13,8 +13,8 @@ import (
 // DiscoveryService shapes the text-only discovery feed.
 // It deliberately excludes ALL photo data from responses (constitution rule).
 type DiscoveryService struct {
-	discoveryRepo  *repository.DiscoveryRepository
-	userRepo       *repository.UserRepository
+	discoveryRepo   *repository.DiscoveryRepository
+	userRepo        *repository.UserRepository
 	matchingService *MatchingService
 }
 
@@ -25,8 +25,8 @@ func NewDiscoveryService(
 	matchingService *MatchingService,
 ) *DiscoveryService {
 	return &DiscoveryService{
-		discoveryRepo:  discoveryRepo,
-		userRepo:       userRepo,
+		discoveryRepo:   discoveryRepo,
+		userRepo:        userRepo,
 		matchingService: matchingService,
 	}
 }
@@ -34,17 +34,30 @@ func NewDiscoveryService(
 // DiscoveryCard is the text-only card returned to the client.
 // It intentionally has NO photo fields — enforcing blind discovery.
 type DiscoveryCard struct {
-	CardID        string         `json:"card_id"`
-	Age           int            `json:"age"`
-	Location      string         `json:"location"`
-	VibeTags      []string       `json:"vibe_tags"`
-	PromptAnswers []PromptAnswer `json:"prompt_answers"`
+	CardID          string             `json:"card_id"`
+	Age             int                `json:"age"`
+	Location        string             `json:"location"`
+	VibeTags        []string           `json:"vibe_tags"`
+	PromptAnswers   []PromptAnswer     `json:"prompt_answers"`
+	LifestyleHabits map[string]string  `json:"lifestyle_habits,omitempty"`
+	Vibe            map[string]string  `json:"vibe,omitempty"`
+	ConnectionStyle map[string]string  `json:"connection_style,omitempty"`
+	Interests       []string           `json:"interests,omitempty"`
+	ProfileData     *ComparisonProfile `json:"profile_data,omitempty"`
 }
 
 // PromptAnswer holds a single question/answer pair for discovery cards.
 type PromptAnswer struct {
 	Question string `json:"question"`
 	Answer   string `json:"answer"`
+}
+
+// ComparisonProfile is a text-only allowlist for compatibility cards.
+type ComparisonProfile struct {
+	LifestyleHabits map[string]string `json:"lifestyle_habits,omitempty"`
+	Vibe            map[string]string `json:"vibe,omitempty"`
+	ConnectionStyle map[string]string `json:"connection_style,omitempty"`
+	Interests       []string          `json:"interests,omitempty"`
 }
 
 // DiscoveryResponse wraps the card list for the API response.
@@ -68,6 +81,10 @@ func (s *DiscoveryService) GetDiscoveryFeed(ctx context.Context, userID string, 
 	candidates, err := s.discoveryRepo.FindCandidates(ctx, userID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("find candidates: %w", err)
+	}
+
+	if len(candidates) == 0 {
+		return &DiscoveryResponse{Cards: []DiscoveryCard{}}, nil
 	}
 
 	// Rank/score candidates (scores stay server-side).
@@ -96,26 +113,57 @@ func userToCard(u *model.User) DiscoveryCard {
 		Location: u.CoarseLocation,
 	}
 
-	// Extract vibe_tags and prompt_answers from profile_data.
+	// Extract public text fields from profile_data.
 	var profile struct {
-		Vibe    string `json:"vibe"`
-		Tags    []string `json:"tags"`
+		Vibe    json.RawMessage `json:"vibe"`
+		Tags    []string        `json:"tags"`
 		Prompts []struct {
 			Question string `json:"question"`
 			Answer   string `json:"answer"`
 		} `json:"prompts"`
+		LifestyleHabits map[string]string `json:"lifestyle_habits"`
+		LegacyLifestyle map[string]string `json:"lifestyle"`
+		ConnectionStyle map[string]string `json:"connection_style"`
+		Interests       []string          `json:"interests"`
 	}
 	if u.ProfileData != nil {
 		_ = json.Unmarshal(u.ProfileData, &profile)
 	}
 
-	// Build vibe_tags: include vibe + tags.
+	// Build vibe_tags: include vibe values, legacy tags, and interests.
+	vibe := extractStringMap(profile.Vibe)
 	vibeTags := make([]string, 0)
-	if profile.Vibe != "" {
-		vibeTags = append(vibeTags, profile.Vibe)
-	}
+	vibeTags = append(vibeTags, mapValues(vibe)...)
 	vibeTags = append(vibeTags, profile.Tags...)
+	vibeTags = append(vibeTags, profile.Interests...)
 	card.VibeTags = vibeTags
+
+	if len(profile.LifestyleHabits) > 0 {
+		card.LifestyleHabits = profile.LifestyleHabits
+	} else if len(profile.LegacyLifestyle) > 0 {
+		card.LifestyleHabits = profile.LegacyLifestyle
+	}
+
+	if len(vibe) > 0 {
+		card.Vibe = vibe
+	}
+
+	if len(profile.ConnectionStyle) > 0 {
+		card.ConnectionStyle = profile.ConnectionStyle
+	}
+
+	if len(profile.Interests) > 0 {
+		card.Interests = profile.Interests
+	}
+
+	if card.LifestyleHabits != nil || card.Vibe != nil || card.ConnectionStyle != nil || card.Interests != nil {
+		card.ProfileData = &ComparisonProfile{
+			LifestyleHabits: card.LifestyleHabits,
+			Vibe:            card.Vibe,
+			ConnectionStyle: card.ConnectionStyle,
+			Interests:       card.Interests,
+		}
+	}
 
 	// Build prompt_answers.
 	answers := make([]PromptAnswer, 0, len(profile.Prompts))
@@ -130,6 +178,35 @@ func userToCard(u *model.User) DiscoveryCard {
 	card.PromptAnswers = answers
 
 	return card
+}
+
+func extractStringMap(raw json.RawMessage) map[string]string {
+	if len(raw) == 0 {
+		return nil
+	}
+
+	var single string
+	if err := json.Unmarshal(raw, &single); err == nil && single != "" {
+		return map[string]string{"vibe": single}
+	}
+
+	var grouped map[string]string
+	if err := json.Unmarshal(raw, &grouped); err != nil {
+		return nil
+	}
+
+	return grouped
+}
+
+func mapValues(grouped map[string]string) []string {
+	values := make([]string, 0, len(grouped))
+	for _, value := range grouped {
+		if value != "" {
+			values = append(values, value)
+		}
+	}
+
+	return values
 }
 
 // SanitizeDiscoveryResponse performs a final defense-in-depth check on the
@@ -160,6 +237,9 @@ func SanitizeDiscoveryResponse(resp *DiscoveryResponse) *DiscoveryResponse {
 		}
 		if c.PromptAnswers == nil {
 			c.PromptAnswers = []PromptAnswer{}
+		}
+		if c.Interests == nil {
+			c.Interests = []string{}
 		}
 		clean = append(clean, c)
 	}
