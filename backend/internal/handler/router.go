@@ -51,10 +51,10 @@ func NewRouter(deps Deps) chi.Router {
 
 	// Public routes (no auth required, rate-limited).
 	r.Group(func(r chi.Router) {
-	r.Use(authLimiter.Middleware)
-	r.Post("/v1/auth/register", deps.AuthHandler.Register)
-	r.Post("/v1/auth/login", deps.AuthHandler.Login)
-    })
+		r.Use(authLimiter.Middleware)
+		r.Post("/v1/auth/register", deps.AuthHandler.Register)
+		r.Post("/v1/auth/login", deps.AuthHandler.Login)
+	})
 
 	// Public location routes (no auth, separate from auth limiter).
 	r.Get("/v1/locations/search", deps.LocationHandler.SearchLocations)
