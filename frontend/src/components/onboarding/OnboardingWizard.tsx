@@ -757,94 +757,73 @@ function BasicsProfileStep({
   const allSelected = genderValue && sexualProfileValue && selectedInterests.length > 0;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold">Let's get to know you</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          This helps us make better matches for you.
-        </p>
-      </div>
-
-      <div className="space-y-4">
+    <div className="grid grid-cols-12 gap-8 max-w-6xl mx-auto px-6 py-10">
+      <div className="col-span-12 lg:col-span-8 space-y-8">
         <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-3">
-            What's your gender?
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {genderOptions.map((opt) => (
-              <button
-                key={opt}
-                onClick={() => setGenderValue(opt)}
-                className={`rounded-full px-4 py-2.5 min-h-touch text-sm font-medium border-2 transition-all ${
-                  genderValue === opt
-                    ? "border-halo-primary bg-halo-primary text-white shadow-sm"
-                    : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
+          <h2 className="text-3xl font-bold" style={{ color: C.onSurface }}>Let&apos;s get to know you</h2>
+          <p className="mt-2 text-base" style={{ color: C.onSurfaceVariant }}>This helps us make better matches for you.</p>
+        </div>
+
+        <div className="space-y-6">
+          <div>
+            <p className="text-sm font-semibold mb-3" style={{ color: C.onSurface }}>What&apos;s your gender?</p>
+            <div className="flex flex-wrap gap-3">
+              {genderOptions.map((opt) => {
+                const isActive = genderValue === opt;
+                return (
+                  <button key={opt} onClick={() => setGenderValue(opt)}
+                    className="rounded-2xl px-5 py-3 text-sm font-medium border-2 transition-all"
+                    style={{ borderColor: isActive ? C.primary : C.outlineVariant, backgroundColor: isActive ? C.primary : C.surfaceContainerLowest, color: isActive ? "#fff" : C.onSurfaceVariant }}>
+                    {isActive && <span className="material-symbols-outlined text-sm mr-1 align-middle">check_circle</span>}
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold mb-3" style={{ color: C.onSurface }}>Sexual orientation</p>
+            <div className="flex flex-wrap gap-3">
+              {sexualProfileOptions.map((opt) => {
+                const isActive = sexualProfileValue === opt;
+                return (
+                  <button key={opt} onClick={() => setSexualProfileValue(opt)}
+                    className="rounded-2xl px-5 py-3 text-sm font-medium border-2 transition-all"
+                    style={{ borderColor: isActive ? C.primary : C.outlineVariant, backgroundColor: isActive ? C.primary : C.surfaceContainerLowest, color: isActive ? "#fff" : C.onSurfaceVariant }}>
+                    {isActive && <span className="material-symbols-outlined text-sm mr-1 align-middle">check_circle</span>}
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold mb-1" style={{ color: C.onSurface }}>Who are you interested in?</p>
+            <p className="text-xs mb-3" style={{ color: C.onSurfaceVariant }}>Select all that apply</p>
+            <div className="flex flex-wrap gap-3">
+              {interestedInOptions.map((option) => {
+                const isActive = selectedInterests.includes(option);
+                return (
+                  <button key={option} onClick={() => toggleInterestedIn(option)}
+                    className="rounded-2xl px-5 py-3 text-sm font-medium border-2 transition-all"
+                    style={{ borderColor: isActive ? C.primary : C.outlineVariant, backgroundColor: isActive ? C.primary : C.surfaceContainerLowest, color: isActive ? "#fff" : C.onSurfaceVariant }}>
+                    {isActive && <span className="material-symbols-outlined text-sm mr-1 align-middle">check_circle</span>}
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-3">
-            Sexual orientation
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {sexualProfileOptions.map((opt) => (
-              <button
-                key={opt}
-                onClick={() => setSexualProfileValue(opt)}
-                className={`rounded-full px-4 py-2.5 min-h-touch text-sm font-medium border-2 transition-all ${
-                  sexualProfileValue === opt
-                    ? "border-halo-primary bg-halo-primary text-white shadow-sm"
-                    : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
+        <div className="flex gap-3 max-w-md">
+          <button onClick={onBack} className="flex-1 rounded-xl px-6 py-3.5 font-semibold border-2 transition-all hover:opacity-80" style={{ borderColor: C.outlineVariant, color: C.onSurface, backgroundColor: C.surfaceContainerLowest }}>Back</button>
+          <button onClick={handleNext} disabled={!allSelected || saving} className="flex-1 rounded-xl px-6 py-3.5 font-semibold text-white transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-50" style={{ background: `linear-gradient(to right, ${C.primary}, ${C.primaryContainer})` }}>
+            {saving ? "Saving..." : "Continue"}
+          </button>
         </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-3">
-            Who are you interested in?
-          </label>
-          <p className="text-xs text-gray-500 mb-2">Select all that apply</p>
-          <div className="flex flex-wrap gap-2">
-            {interestedInOptions.map((option) => (
-              <button
-                key={option}
-                onClick={() => toggleInterestedIn(option)}
-                className={`rounded-full px-4 py-2.5 min-h-touch text-sm font-medium border-2 transition-all ${
-                  selectedInterests.includes(option)
-                    ? "border-halo-primary bg-halo-primary text-white shadow-sm"
-                    : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
-                }`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-3 pt-4">
-        <button
-          onClick={onBack}
-          className="flex-1 rounded-lg border border-gray-300 px-4 py-3 min-h-touch font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          Back
-        </button>
-        <button
-          onClick={handleNext}
-          disabled={!allSelected || saving}
-          className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          {saving ? "Saving…" : "Continue"}
-        </button>
       </div>
     </div>
   );
@@ -1059,55 +1038,40 @@ function LifestyleStep({
   const allSelected = LIFESTYLE_OPTIONS.every((opt) => selected[opt.key]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold">Your lifestyle</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Help matches understand your habits and preferences.
-        </p>
-      </div>
+    <div className="grid grid-cols-12 gap-8 max-w-6xl mx-auto px-6 py-10">
+      <div className="col-span-12 lg:col-span-8 space-y-8">
+        <div>
+          <h2 className="text-3xl font-bold" style={{ color: C.onSurface }}>Your lifestyle</h2>
+          <p className="mt-2 text-base" style={{ color: C.onSurfaceVariant }}>Help matches understand your habits and preferences.</p>
+        </div>
 
-      <div className="space-y-6">
-        {LIFESTYLE_OPTIONS.map((group) => (
-          <div key={group.key}>
-            <label className="block text-sm font-semibold text-gray-900 mb-3">
-              {group.category}
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {group.options.map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() =>
-                    setSelected((s) => ({ ...s, [group.key]: opt }))
-                  }
-                  className={`rounded-full px-3.5 py-2 text-sm font-medium border-2 transition-all ${
-                    selected[group.key] === opt
-                      ? "border-halo-primary bg-halo-primary text-white shadow-sm"
-                      : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
+        <div className="space-y-6">
+          {LIFESTYLE_OPTIONS.map((group) => (
+            <div key={group.key}>
+              <p className="text-sm font-semibold mb-3" style={{ color: C.onSurface }}>{group.category}</p>
+              <div className="flex flex-wrap gap-3">
+                {group.options.map((opt) => {
+                  const isActive = selected[group.key] === opt;
+                  return (
+                    <button key={opt} onClick={() => setSelected((s) => ({ ...s, [group.key]: opt }))}
+                      className="rounded-2xl px-5 py-3 text-sm font-medium border-2 transition-all"
+                      style={{ borderColor: isActive ? C.primary : C.outlineVariant, backgroundColor: isActive ? C.primary : C.surfaceContainerLowest, color: isActive ? "#fff" : C.onSurfaceVariant }}>
+                      {isActive && <span className="material-symbols-outlined text-sm mr-1 align-middle">check_circle</span>}
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <div className="flex gap-3 pt-4">
-        <button
-          onClick={onBack}
-          className="flex-1 rounded-lg border border-gray-300 px-4 py-3 min-h-touch font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          Back
-        </button>
-        <button
-          onClick={handleNext}
-          disabled={!allSelected || saving}
-          className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          {saving ? "Saving…" : "Continue"}
-        </button>
+        <div className="flex gap-3 max-w-md">
+          <button onClick={onBack} className="flex-1 rounded-xl px-6 py-3.5 font-semibold border-2 transition-all hover:opacity-80" style={{ borderColor: C.outlineVariant, color: C.onSurface, backgroundColor: C.surfaceContainerLowest }}>Back</button>
+          <button onClick={handleNext} disabled={!allSelected || saving} className="flex-1 rounded-xl px-6 py-3.5 font-semibold text-white transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-50" style={{ background: `linear-gradient(to right, ${C.primary}, ${C.primaryContainer})` }}>
+            {saving ? "Saving..." : "Continue"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1135,55 +1099,40 @@ function ConnectionStyleStep({
   const allSelected = CONNECTION_STYLE_OPTIONS.every((opt) => selected?.[opt.id]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold">How do you connect?</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Help matches understand your communication and emotional style.
-        </p>
-      </div>
+    <div className="grid grid-cols-12 gap-8 max-w-6xl mx-auto px-6 py-10">
+      <div className="col-span-12 lg:col-span-8 space-y-8">
+        <div>
+          <h2 className="text-3xl font-bold" style={{ color: C.onSurface }}>How do you connect?</h2>
+          <p className="mt-2 text-base" style={{ color: C.onSurfaceVariant }}>Help matches understand your communication and emotional style.</p>
+        </div>
 
-      <div className="space-y-5">
-        {CONNECTION_STYLE_OPTIONS.map((group) => (
-          <div key={group.id}>
-            <label className="block text-sm font-semibold text-gray-900 mb-3">
-              {group.label}
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {group.options.map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() =>
-                    setSelected((s) => ({ ...s, [group.id]: opt }))
-                  }
-                  className={`rounded-full px-4 py-2.5 min-h-touch text-sm font-medium border-2 transition-all ${
-                    selected[group.id] === opt
-                      ? "border-halo-primary bg-halo-primary text-white shadow-sm"
-                      : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
+        <div className="space-y-6">
+          {CONNECTION_STYLE_OPTIONS.map((group) => (
+            <div key={group.id}>
+              <p className="text-sm font-semibold mb-3" style={{ color: C.onSurface }}>{group.label}</p>
+              <div className="flex flex-wrap gap-3">
+                {group.options.map((opt) => {
+                  const isActive = selected[group.id] === opt;
+                  return (
+                    <button key={opt} onClick={() => setSelected((s) => ({ ...s, [group.id]: opt }))}
+                      className="rounded-2xl px-5 py-3 text-sm font-medium border-2 transition-all"
+                      style={{ borderColor: isActive ? C.primary : C.outlineVariant, backgroundColor: isActive ? C.primary : C.surfaceContainerLowest, color: isActive ? "#fff" : C.onSurfaceVariant }}>
+                      {isActive && <span className="material-symbols-outlined text-sm mr-1 align-middle">check_circle</span>}
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <div className="flex gap-3 pt-4">
-        <button
-          onClick={onBack}
-          className="flex-1 rounded-lg border border-gray-300 px-4 py-3 min-h-touch font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          Back
-        </button>
-        <button
-          onClick={handleNext}
-          disabled={!allSelected || saving}
-          className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          {saving ? "Saving…" : "Continue"}
-        </button>
+        <div className="flex gap-3 max-w-md">
+          <button onClick={onBack} className="flex-1 rounded-xl px-6 py-3.5 font-semibold border-2 transition-all hover:opacity-80" style={{ borderColor: C.outlineVariant, color: C.onSurface, backgroundColor: C.surfaceContainerLowest }}>Back</button>
+          <button onClick={handleNext} disabled={!allSelected || saving} className="flex-1 rounded-xl px-6 py-3.5 font-semibold text-white transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-50" style={{ background: `linear-gradient(to right, ${C.primary}, ${C.primaryContainer})` }}>
+            {saving ? "Saving..." : "Continue"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1215,72 +1164,48 @@ function InterestsStep({
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold">What are your interests?</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Pick up to {MAX_INTERESTS} that describe you.
-        </p>
-      </div>
-
-      <div className="space-y-5">
-        {INTERESTS_OPTIONS.map((category) => (
-          <div key={category.category}>
-            <label className="block text-sm font-semibold text-gray-900 mb-3">
-              {category.category}
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {category.interests.map((interest) => {
-                const isSelected = interests.includes(interest);
-                const isDisabled = !isSelected && interests.length >= MAX_INTERESTS;
-                return (
-                  <button
-                    key={interest}
-                    onClick={() => toggle(interest)}
-                    disabled={isDisabled}
-                    className={`rounded-full px-4 py-2 text-sm font-medium border-2 transition-all min-h-touch ${
-                      isSelected
-                        ? "border-halo-primary bg-halo-primary text-white shadow-sm"
-                        : isDisabled
-                        ? "border-gray-200 text-gray-400 cursor-not-allowed"
-                        : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
-                    }`}
-                  >
-                    {interest}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-center justify-between pt-2 px-1">
-        <p className="text-sm font-medium text-gray-600">
-          {interests.length}/{MAX_INTERESTS} selected
-        </p>
-        <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-halo-primary transition-all"
-            style={{ width: `${(interests.length / MAX_INTERESTS) * 100}%` }}
-          />
+    <div className="grid grid-cols-12 gap-8 max-w-6xl mx-auto px-6 py-10">
+      <div className="col-span-12 lg:col-span-8 space-y-8">
+        <div>
+          <h2 className="text-3xl font-bold" style={{ color: C.onSurface }}>What are your interests?</h2>
+          <p className="mt-2 text-base" style={{ color: C.onSurfaceVariant }}>Pick up to {MAX_INTERESTS} that describe you.</p>
         </div>
-      </div>
 
-      <div className="flex gap-3 pt-4">
-        <button
-          onClick={onBack}
-          className="flex-1 rounded-lg border border-gray-300 px-4 py-3 min-h-touch font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          Back
-        </button>
-        <button
-          onClick={() => onNext(interests)}
-          disabled={interests.length === 0 || saving}
-          className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          {saving ? "Saving…" : "Continue"}
-        </button>
+        <div className="space-y-6">
+          {INTERESTS_OPTIONS.map((category) => (
+            <div key={category.category}>
+              <p className="text-sm font-semibold mb-3" style={{ color: C.onSurface }}>{category.category}</p>
+              <div className="flex flex-wrap gap-3">
+                {category.interests.map((interest) => {
+                  const isSelected = interests.includes(interest);
+                  const isDisabled = !isSelected && interests.length >= MAX_INTERESTS;
+                  return (
+                    <button key={interest} onClick={() => toggle(interest)} disabled={isDisabled}
+                      className="rounded-2xl px-5 py-3 text-sm font-medium border-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ borderColor: isSelected ? C.primary : C.outlineVariant, backgroundColor: isSelected ? C.primary : C.surfaceContainerLowest, color: isSelected ? "#fff" : C.onSurfaceVariant }}>
+                      {isSelected && <span className="material-symbols-outlined text-sm mr-1 align-middle">check_circle</span>}
+                      {interest}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-4 max-w-md">
+          <p className="text-sm font-medium" style={{ color: C.onSurfaceVariant }}>{interests.length}/{MAX_INTERESTS} selected</p>
+          <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: C.outlineVariant }}>
+            <div className="h-full rounded-full transition-all" style={{ width: `${(interests.length / MAX_INTERESTS) * 100}%`, background: `linear-gradient(to right, ${C.primary}, ${C.primaryContainer})` }} />
+          </div>
+        </div>
+
+        <div className="flex gap-3 max-w-md">
+          <button onClick={onBack} className="flex-1 rounded-xl px-6 py-3.5 font-semibold border-2 transition-all hover:opacity-80" style={{ borderColor: C.outlineVariant, color: C.onSurface, backgroundColor: C.surfaceContainerLowest }}>Back</button>
+          <button onClick={() => onNext(interests)} disabled={interests.length === 0 || saving} className="flex-1 rounded-xl px-6 py-3.5 font-semibold text-white transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-50" style={{ background: `linear-gradient(to right, ${C.primary}, ${C.primaryContainer})` }}>
+            {saving ? "Saving..." : "Continue"}
+          </button>
+        </div>
       </div>
     </div>
   );
