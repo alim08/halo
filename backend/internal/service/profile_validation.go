@@ -64,13 +64,10 @@ func CheckOnboardingComplete(birthdate *time.Time, coarseLocation string, profil
 		val, ok := data[key]
 		found := ok && len(val) > 0 && string(val) != "null" && string(val) != "\"\"" && string(val) != "[]" && string(val) != "{}"
 		if !found {
-			fmt.Printf("[Validation] ❌ Missing or empty required field: %q\n", key)
 			return false
 		}
-		fmt.Printf("[Validation] ✅ Field %q present and valid\n", key)
 	}
 
-	fmt.Println("[Validation] ✅ All onboarding fields complete")
 	return true
 }
 
