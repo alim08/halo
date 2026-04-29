@@ -42,7 +42,29 @@ func ValidateBirthdate(birthdate *time.Time) error {
 
 // onboardingRequiredFields are the profile_data keys that must be present
 // for a user to be considered fully onboarded.
-var onboardingRequiredFields = []string{"gender", "sexual_profile", "interested_in", "vibe", "relationship_intentions", "lifestyle_habits", "connection_style", "interests", "prompts"}
+var onboardingRequiredFields = []string{"race_ethnicity", "gender", "sexual_profile", "interested_in", "vibe", "relationship_intentions", "age_pref_min", "age_pref_max", "lifestyle_habits", "connection_style", "interests", "prompts"}
+
+var allowedRaceEthnicityValues = map[string]struct{}{
+	"Asian":                        {},
+	"Black/African":                {},
+	"Hispanic/Latino":              {},
+	"Middle Eastern/North African": {},
+	"Pacific Islander":             {},
+	"White":                        {},
+	"Other":                        {},
+	"Prefer not to say":            {},
+}
+
+var allowedRaceEthnicityPreferenceValues = map[string]struct{}{
+	"Open to all":                  {},
+	"Asian":                        {},
+	"Black/African":                {},
+	"Hispanic/Latino":              {},
+	"Middle Eastern/North African": {},
+	"Pacific Islander":             {},
+	"White":                        {},
+	"Other":                        {},
+}
 
 // CheckOnboardingComplete determines whether a user has completed onboarding
 // based on the required fields in their profile_data, plus birthdate and location.
@@ -83,6 +105,104 @@ func ValidateProfileData(raw json.RawMessage) error {
 		return &ProfileValidationError{
 			Field:   "profile_data",
 			Message: "must be a JSON object",
+		}
+	}
+
+	if err := validateAgePreferences(obj); err != nil {
+		return err
+	}
+	if err := validateStringArrayField(obj, "race_ethnicity", allowedRaceEthnicityValues, "Prefer not to say"); err != nil {
+		return err
+	}
+	if err := validateStringArrayField(obj, "race_ethnicity_preferences", allowedRaceEthnicityPreferenceValues, "Open to all"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateAgePreferences(obj map[string]json.RawMessage) error {
+	minRaw, hasMin := obj["age_pref_min"]
+	maxRaw, hasMax := obj["age_pref_max"]
+	if !hasMin && !hasMax {
+		return nil
+	}
+	if !hasMin || !hasMax {
+		return &ProfileValidationError{
+			Field:   "age_preferences",
+			Message: "age_pref_min and age_pref_max must be provided together",
+		}
+	}
+
+	var minAge int
+	if err := json.Unmarshal(minRaw, &minAge); err != nil {
+		return &ProfileValidationError{
+			Field:   "age_pref_min",
+			Message: "must be a whole number",
+		}
+	}
+
+	var maxAge int
+	if err := json.Unmarshal(maxRaw, &maxAge); err != nil {
+		return &ProfileValidationError{
+			Field:   "age_pref_max",
+			Message: "must be a whole number",
+		}
+	}
+
+	if minAge < 18 {
+		return &ProfileValidationError{
+			Field:   "age_pref_min",
+			Message: "must be at least 18",
+		}
+	}
+	if maxAge > 99 {
+		return &ProfileValidationError{
+			Field:   "age_pref_max",
+			Message: "must be 99 or younger",
+		}
+	}
+	if minAge > maxAge {
+		return &ProfileValidationError{
+			Field:   "age_preferences",
+			Message: "minimum age cannot exceed maximum age",
+		}
+	}
+
+	return nil
+}
+
+func validateStringArrayField(obj map[string]json.RawMessage, field string, allowed map[string]struct{}, exclusiveOption string) error {
+	raw, ok := obj[field]
+	if !ok {
+		return nil
+	}
+
+	var values []string
+	if err := json.Unmarshal(raw, &values); err != nil {
+		return &ProfileValidationError{
+			Field:   field,
+			Message: "must be an array of strings",
+		}
+	}
+
+	for _, value := range values {
+		if _, ok := allowed[value]; !ok {
+			return &ProfileValidationError{
+				Field:   field,
+				Message: "contains an unsupported option",
+			}
+		}
+	}
+
+	if len(values) > 1 {
+		for _, value := range values {
+			if value == exclusiveOption {
+				return &ProfileValidationError{
+					Field:   field,
+					Message: exclusiveOption + " cannot be combined with other options",
+				}
+			}
 		}
 	}
 
