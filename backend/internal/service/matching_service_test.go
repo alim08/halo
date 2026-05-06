@@ -231,6 +231,175 @@ func TestRankCandidates_EmptyReturnsEmpty(t *testing.T) {
 	}
 }
 
+// ── ageProximity ─────────────────────────────────────────────────────────────
+
+func TestAgeProximity(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	at := func(d time.Duration) *time.Time { t := now.Add(d); return &t }
+
+	tests := []struct {
+		name    string
+		a, b    *time.Time
+		wantMin float64
+		wantMax float64
+	}{
+		{
+			name:    "both nil returns neutral 0.5",
+			a:       nil,
+			b:       nil,
+			wantMin: 0.5,
+			wantMax: 0.5,
+		},
+		{
+			name:    "a nil returns neutral 0.5",
+			a:       nil,
+			b:       at(-25 * 365 * 24 * time.Hour),
+			wantMin: 0.5,
+			wantMax: 0.5,
+		},
+		{
+			name:    "b nil returns neutral 0.5",
+			a:       at(-25 * 365 * 24 * time.Hour),
+			b:       nil,
+			wantMin: 0.5,
+			wantMax: 0.5,
+		},
+		{
+			// time.Since is called twice inside ageProximity so tiny float
+			// drift keeps the result just below 1.0; accept values in [0.999, 1.0].
+			name:    "same birthdate returns close to 1.0",
+			a:       at(-25 * 365 * 24 * time.Hour),
+			b:       at(-25 * 365 * 24 * time.Hour),
+			wantMin: 0.999,
+			wantMax: 1.0,
+		},
+		{
+			name:    "5 years apart returns approx 0.5",
+			a:       at(-20 * 365 * 24 * time.Hour),
+			b:       at(-25 * 365 * 24 * time.Hour),
+			wantMin: 0.45,
+			wantMax: 0.55,
+		},
+		{
+			name:    "11 years apart returns 0",
+			a:       at(-20 * 365 * 24 * time.Hour),
+			b:       at(-31 * 365 * 24 * time.Hour),
+			wantMin: 0,
+			wantMax: 0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := ageProximity(tc.a, tc.b)
+
+			if got < tc.wantMin || got > tc.wantMax {
+				t.Errorf("ageProximity = %.4f, want [%.4f, %.4f]", got, tc.wantMin, tc.wantMax)
+			}
+		})
+	}
+}
+
+// ── locationMatch ─────────────────────────────────────────────────────────────
+
+func TestLocationMatch(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		a, b string
+		want float64
+	}{
+		{"both empty returns neutral 0.5", "", "", 0.5},
+		{"a empty returns neutral 0.5", "", "NYC", 0.5},
+		{"b empty returns neutral 0.5", "NYC", "", 0.5},
+		{"same location returns 1.0", "NYC", "NYC", 1.0},
+		{"different locations returns 0", "NYC", "LA", 0},
+		{"case sensitive mismatch returns 0", "nyc", "NYC", 0},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := locationMatch(tc.a, tc.b)
+
+			if got != tc.want {
+				t.Errorf("locationMatch = %.2f, want %.2f", got, tc.want)
+			}
+		})
+	}
+}
+
+// ── interestJaccard additional edge cases ────────────────────────────────────
+
+func TestInterestJaccard_DuplicateElementsTreatedAsSet(t *testing.T) {
+	t.Parallel()
+
+	// Duplicate "x" in b must not inflate the intersection count.
+	// True set-based Jaccard: A={"x"}, B={"x"} → 1.0.
+	a := matchProfile{Interests: []string{"x"}}
+	b := matchProfile{Interests: []string{"x", "x"}}
+
+	got := interestJaccard(a, b)
+
+	if !floatEqual(got, 1.0) {
+		t.Errorf("interestJaccard with duplicate b = %.6f, want 1.0", got)
+	}
+}
+
+func TestInterestJaccard_DuplicatesInBothInputs(t *testing.T) {
+	t.Parallel()
+
+	// A={"x","y"}, B={"x","y"} with duplicates → 1.0.
+	a := matchProfile{Interests: []string{"x", "x", "y"}}
+	b := matchProfile{Interests: []string{"y", "x", "y"}}
+
+	got := interestJaccard(a, b)
+
+	if !floatEqual(got, 1.0) {
+		t.Errorf("interestJaccard with duplicates in both = %.6f, want 1.0", got)
+	}
+}
+
+// ── recencyScore boundary precision ─────────────────────────────────────────
+
+func TestRecencyScore_ExactBoundaries(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	ago := func(d time.Duration) *time.Time { t := now.Add(-d); return &t }
+
+	tests := []struct {
+		name string
+		last *time.Time
+		want float64
+	}{
+		// Exactly at the 24-hour boundary crosses into the 20-cent bin.
+		{"exactly 24h ago", ago(24 * time.Hour), 0.20},
+		// Exactly at the 7-day boundary crosses into the 10-cent bin.
+		{"exactly 7 days ago", ago(7 * 24 * time.Hour), 0.10},
+		// Exactly at the 30-day boundary returns 0.
+		{"exactly 30 days ago", ago(30 * 24 * time.Hour), 0},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := recencyScore(tc.last)
+
+			if got != tc.want {
+				t.Errorf("recencyScore = %.2f, want %.2f", got, tc.want)
+			}
+		})
+	}
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 // floatEqual reports whether a and b are within a small epsilon.

@@ -1,30 +1,43 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
 
 	"halo/backend/internal/auth"
 	"halo/backend/internal/handler/httputil"
+	"halo/backend/internal/model"
 	"halo/backend/internal/repository"
 	"halo/backend/internal/service"
 )
+
+// matchStore is the subset of MatchRepository required by MatchesHandler.
+type matchStore interface {
+	GetByID(ctx context.Context, matchID string) (*model.Match, error)
+	Unmatch(ctx context.Context, matchID, userID string) error
+}
+
+// userStore is the subset of UserRepository required by MatchesHandler.
+type userStore interface {
+	GetByID(ctx context.Context, id string) (*model.User, error)
+}
 
 // MatchesHandler handles /v1/matches endpoints.
 type MatchesHandler struct {
 	chatService   *service.ChatService
 	sparksService *service.SparksService
-	matchRepo     *repository.MatchRepository
-	userRepo      *repository.UserRepository
+	matchRepo     matchStore
+	userRepo      userStore
 }
 
 // NewMatchesHandler creates a new MatchesHandler.
 func NewMatchesHandler(
 	chatService *service.ChatService,
 	sparksService *service.SparksService,
-	matchRepo *repository.MatchRepository,
-	userRepo *repository.UserRepository,
+	matchRepo matchStore,
+	userRepo userStore,
 ) *MatchesHandler {
 	return &MatchesHandler{
 		chatService:   chatService,

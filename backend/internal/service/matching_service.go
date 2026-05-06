@@ -104,10 +104,13 @@ func interestJaccard(a, b matchProfile) float64 {
 		setA[v] = struct{}{}
 	}
 
-	var intersect int
 	setB := make(map[string]struct{}, len(b.Interests))
 	for _, v := range b.Interests {
 		setB[v] = struct{}{}
+	}
+
+	var intersect int
+	for v := range setB {
 		if _, ok := setA[v]; ok {
 			intersect++
 		}

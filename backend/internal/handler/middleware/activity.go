@@ -7,16 +7,20 @@ import (
 	"time"
 
 	"halo/backend/internal/auth"
-	"halo/backend/internal/repository"
 )
 
 const touchLastActiveTimeout = 5 * time.Second
+
+// lastActiveUpdater is the subset of UserRepository required by TouchLastActive.
+type lastActiveUpdater interface {
+	TouchLastActive(ctx context.Context, userID string) error
+}
 
 // TouchLastActive returns middleware that asynchronously updates
 // users.last_active_at on every authenticated request.
 // The update runs in a goroutine so it never adds latency to the response path.
 // Errors are logged at WARN level and silently dropped — this is best-effort.
-func TouchLastActive(userRepo *repository.UserRepository) func(http.Handler) http.Handler {
+func TouchLastActive(userRepo lastActiveUpdater) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			userID := auth.UserIDFromContext(r.Context())
