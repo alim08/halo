@@ -73,7 +73,11 @@ func run() error {
 	// ── WebSocket hub + Pub/Sub ──────────────────────────────
 	wsHub := ws.NewHub()
 	wsPubSub := ws.NewPubSub(redisClient, wsHub)
-	go wsPubSub.Subscribe(ctx)
+	pubsubDone := make(chan struct{})
+	go func() {
+		defer close(pubsubDone)
+		wsPubSub.Subscribe(ctx)
+	}()
 
 	// ── Services ─────────────────────────────────────────────
 	authService := service.NewAuthService(userRepo, jwtService)
@@ -168,6 +172,17 @@ func run() error {
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("shutdown: %w", err)
+	}
+
+	// Now that HTTP is drained, cancel the root context to signal the
+	// pubsub subscription to exit, and wait for it before letting deferred
+	// closes (redis, db) run. Without this drain, in-flight Redis receive
+	// ops could be abandoned mid-message during a rolling deploy.
+	cancel()
+	select {
+	case <-pubsubDone:
+	case <-time.After(5 * time.Second):
+		slog.Warn("ws pubsub did not exit cleanly within 5s")
 	}
 
 	slog.Info("halo-api stopped")

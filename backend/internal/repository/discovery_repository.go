@@ -63,7 +63,7 @@ func (r *DiscoveryRepository) FindCandidates(ctx context.Context, p FindCandidat
 	}
 
 	rows, err := r.pool.Query(ctx, `
-		SELECT u.id, u.email, u.password_hash, u.auth_provider, u.is_onboarded,
+		SELECT u.id, u.email, u.auth_provider, u.is_onboarded,
 		       u.birthdate, COALESCE(u.coarse_location, ''),
 		       u.profile_data, u.last_active_at, u.created_at, u.updated_at
 		FROM users u
@@ -128,6 +128,9 @@ func (r *DiscoveryRepository) FindCandidates(ctx context.Context, p FindCandidat
 		      OR $6::int <= (u.profile_data->>'age_pref_max')::int
 		  )
 
+		-- TODO: ORDER BY RANDOM() forces a full sort of every matching row.
+		-- Acceptable at MVP scale; replace with TABLESAMPLE or a precomputed
+		-- random ordering when active user count exceeds ~10k.
 		ORDER BY RANDOM()
 		LIMIT $8
 	`, p.UserID,
@@ -148,7 +151,7 @@ func (r *DiscoveryRepository) FindCandidates(ctx context.Context, p FindCandidat
 	for rows.Next() {
 		u := &model.User{}
 		if err := rows.Scan(
-			&u.ID, &u.Email, &u.PasswordHash, &u.AuthProvider, &u.IsOnboarded,
+			&u.ID, &u.Email, &u.AuthProvider, &u.IsOnboarded,
 			&u.Birthdate, &u.CoarseLocation, &u.ProfileData, &u.LastActiveAt,
 			&u.CreatedAt, &u.UpdatedAt,
 		); err != nil {

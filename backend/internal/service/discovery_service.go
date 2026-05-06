@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -113,8 +114,12 @@ func buildFindParams(viewer *model.User, limit int) repository.FindCandidatesPar
 		AgePrefMin   int    `json:"age_pref_min"`
 		AgePrefMax   int    `json:"age_pref_max"`
 	}
-	if viewer.ProfileData != nil {
-		_ = json.Unmarshal(viewer.ProfileData, &profile)
+	if len(viewer.ProfileData) > 0 {
+		if err := json.Unmarshal(viewer.ProfileData, &profile); err != nil {
+			// Falls through to zero-value filters; surface so corrupt data is observable.
+			slog.Warn("discovery: parse viewer profile_data failed",
+				"user_id", viewer.ID, "err", err)
+		}
 	}
 
 	p.ViewerGender = normalizeGender(profile.Gender)
@@ -189,8 +194,11 @@ func userToCard(u *model.User) DiscoveryCard {
 		ConnectionStyle map[string]string `json:"connection_style"`
 		Interests       []string          `json:"interests"`
 	}
-	if u.ProfileData != nil {
-		_ = json.Unmarshal(u.ProfileData, &profile)
+	if len(u.ProfileData) > 0 {
+		if err := json.Unmarshal(u.ProfileData, &profile); err != nil {
+			slog.Warn("discovery: parse candidate profile_data failed",
+				"user_id", u.ID, "err", err)
+		}
 	}
 
 	vibe := extractStringMap(profile.Vibe)

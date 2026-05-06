@@ -29,21 +29,32 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 	return &UserRepository{pool: pool}
 }
 
+// userColumns is the canonical SELECT/RETURNING column list for users.
+// Centralized so a new column (e.g. last_active_at) is added in one place.
+const userColumns = `id, email, password_hash, auth_provider, is_onboarded,
+		birthdate, COALESCE(coarse_location, ''), profile_data,
+		last_active_at, created_at, updated_at`
+
+// scanUser scans a row in userColumns order into the supplied User.
+func scanUser(row pgx.Row, u *model.User) error {
+	return row.Scan(
+		&u.ID, &u.Email, &u.PasswordHash, &u.AuthProvider, &u.IsOnboarded,
+		&u.Birthdate, &u.CoarseLocation, &u.ProfileData,
+		&u.LastActiveAt, &u.CreatedAt, &u.UpdatedAt,
+	)
+}
+
 // Create inserts a new user and returns the populated model.
 func (r *UserRepository) Create(ctx context.Context, email, passwordHash string) (*model.User, error) {
 	u := &model.User{}
-	err := r.pool.QueryRow(ctx,
+	err := scanUser(r.pool.QueryRow(ctx,
 		`INSERT INTO users (email, password_hash, profile_data)
 		 VALUES ($1, $2, '{}')
-		 RETURNING id, email, password_hash, auth_provider, is_onboarded,
-		           birthdate, COALESCE(coarse_location, ''), profile_data, created_at, updated_at`,
+		 RETURNING `+userColumns,
 		email, passwordHash,
-	).Scan(
-		&u.ID, &u.Email, &u.PasswordHash, &u.AuthProvider, &u.IsOnboarded,
-		&u.Birthdate, &u.CoarseLocation, &u.ProfileData, &u.CreatedAt, &u.UpdatedAt,
-	)
+	), u)
 	if err != nil {
-		if isDuplicateKeyError(err) {
+		if isUniqueViolation(err) {
 			return nil, ErrEmailTaken
 		}
 		return nil, fmt.Errorf("create user: %w", err)
@@ -54,14 +65,9 @@ func (r *UserRepository) Create(ctx context.Context, email, passwordHash string)
 // GetByID retrieves a user by primary key.
 func (r *UserRepository) GetByID(ctx context.Context, id string) (*model.User, error) {
 	u := &model.User{}
-	err := r.pool.QueryRow(ctx,
-		`SELECT id, email, password_hash, auth_provider, is_onboarded,
-		        birthdate, COALESCE(coarse_location, ''), profile_data, created_at, updated_at
-		 FROM users WHERE id = $1`, id,
-	).Scan(
-		&u.ID, &u.Email, &u.PasswordHash, &u.AuthProvider, &u.IsOnboarded,
-		&u.Birthdate, &u.CoarseLocation, &u.ProfileData, &u.CreatedAt, &u.UpdatedAt,
-	)
+	err := scanUser(r.pool.QueryRow(ctx,
+		`SELECT `+userColumns+` FROM users WHERE id = $1`, id,
+	), u)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -71,17 +77,41 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*model.User, e
 	return u, nil
 }
 
+// GetByIDs retrieves users by a set of primary keys in a single round-trip.
+// Order of returned users does NOT match the input order; callers that need
+// ordering should index by ID. IDs not found are silently omitted (no error).
+func (r *UserRepository) GetByIDs(ctx context.Context, ids []string) ([]*model.User, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT `+userColumns+` FROM users WHERE id = ANY($1::uuid[])`, ids,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get users by ids: %w", err)
+	}
+	defer rows.Close()
+
+	users := make([]*model.User, 0, len(ids))
+	for rows.Next() {
+		u := &model.User{}
+		if err := scanUser(rows, u); err != nil {
+			return nil, fmt.Errorf("scan user: %w", err)
+		}
+		users = append(users, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration: %w", err)
+	}
+	return users, nil
+}
+
 // GetByEmail retrieves a user by email (case-insensitive via citext).
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	u := &model.User{}
-	err := r.pool.QueryRow(ctx,
-		`SELECT id, email, password_hash, auth_provider, is_onboarded,
-		        birthdate, COALESCE(coarse_location, ''), profile_data, created_at, updated_at
-		 FROM users WHERE email = $1`, email,
-	).Scan(
-		&u.ID, &u.Email, &u.PasswordHash, &u.AuthProvider, &u.IsOnboarded,
-		&u.Birthdate, &u.CoarseLocation, &u.ProfileData, &u.CreatedAt, &u.UpdatedAt,
-	)
+	err := scanUser(r.pool.QueryRow(ctx,
+		`SELECT `+userColumns+` FROM users WHERE email = $1`, email,
+	), u)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -96,20 +126,16 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*model.U
 // This supports partial/resumable onboarding — profile_data is merged, not replaced.
 func (r *UserRepository) UpdateProfile(ctx context.Context, id string, birthdate *time.Time, coarseLocation string, profileData json.RawMessage, isOnboarded bool) (*model.User, error) {
 	u := &model.User{}
-	err := r.pool.QueryRow(ctx,
+	err := scanUser(r.pool.QueryRow(ctx,
 		`UPDATE users
 		 SET birthdate       = COALESCE($2, birthdate),
 		     coarse_location = CASE WHEN $3 = '' THEN coarse_location ELSE $3 END,
 		     profile_data    = CASE WHEN $4::jsonb IS NOT NULL THEN profile_data || $4::jsonb ELSE profile_data END,
 		     is_onboarded    = $5
 		 WHERE id = $1
-		 RETURNING id, email, password_hash, auth_provider, is_onboarded,
-		           birthdate, COALESCE(coarse_location, ''), profile_data, created_at, updated_at`,
+		 RETURNING `+userColumns,
 		id, birthdate, coarseLocation, profileData, isOnboarded,
-	).Scan(
-		&u.ID, &u.Email, &u.PasswordHash, &u.AuthProvider, &u.IsOnboarded,
-		&u.Birthdate, &u.CoarseLocation, &u.ProfileData, &u.CreatedAt, &u.UpdatedAt,
-	)
+	), u)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -130,22 +156,4 @@ func (r *UserRepository) TouchLastActive(ctx context.Context, userID string) err
 		return fmt.Errorf("touch last active: %w", err)
 	}
 	return nil
-}
-
-// isDuplicateKeyError checks for Postgres unique violation (23505).
-func isDuplicateKeyError(err error) bool {
-	return err != nil && contains(err.Error(), "23505")
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && searchString(s, substr)
-}
-
-func searchString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

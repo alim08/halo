@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -78,6 +79,20 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID string, limit i
 	var err error
 
 	if cursor != nil && *cursor != "" {
+		// Resolve cursor to its created_at; an unknown cursor returns
+		// ErrMatchNotFound so the caller can distinguish "stale cursor"
+		// from "no more matches" (a NULL subquery would silently return zero rows).
+		var cursorCreatedAt time.Time
+		err := r.pool.QueryRow(ctx,
+			`SELECT created_at FROM matches WHERE id = $1`, *cursor,
+		).Scan(&cursorCreatedAt)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, ErrMatchNotFound
+			}
+			return nil, fmt.Errorf("resolve cursor: %w", err)
+		}
+
 		rows, err = r.pool.Query(ctx,
 			`SELECT id, user_a_id, user_b_id, current_connection_level,
 			        message_count, user_a_counted_sent, user_b_counted_sent,
@@ -86,10 +101,10 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID string, limit i
 			 FROM matches
 			 WHERE (user_a_id = $1 OR user_b_id = $1)
 			   AND unmatched_at IS NULL
-			   AND created_at < (SELECT created_at FROM matches WHERE id = $3)
+			   AND created_at < $3
 			 ORDER BY COALESCE(last_message_at, created_at) DESC
 			 LIMIT $2`,
-			userID, limit, *cursor,
+			userID, limit, cursorCreatedAt,
 		)
 	} else {
 		rows, err = r.pool.Query(ctx,

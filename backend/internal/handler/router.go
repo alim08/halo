@@ -41,8 +41,15 @@ func NewRouter(deps Deps) chi.Router {
 	r.Use(observability.AuditMiddleware)
 
 	// Rate limiters.
-	authLimiter := middleware.NewRateLimiter(20, 5, time.Minute)      // 20 req/min for auth
-	discoveryLimiter := middleware.NewRateLimiter(60, 15, time.Minute) // 60 req/min for discovery
+	// authLimiter is keyed per-IP (no user is logged in yet on these routes).
+	// chatLimiter / messageLimiter / discoveryLimiter are applied via
+	// MiddlewareByUser below so concurrent users behind the same NAT each
+	// get their own bucket.
+	authLimiter := middleware.NewRateLimiter(20, 5, time.Minute)         // 20 req/min for auth
+	discoveryLimiter := middleware.NewRateLimiter(60, 15, time.Minute)    // 60 req/min for discovery
+	chatLimiter := middleware.NewRateLimiter(120, 30, time.Minute)        // 120 req/min for match/chat reads + unmatch
+	messageLimiter := middleware.NewRateLimiter(60, 10, time.Minute)      // 60 req/min for outbound messages
+	photoUploadLimiter := middleware.NewRateLimiter(10, 5, time.Minute)   // 10 req/min for upload-url issuance
 
 	// Health check (unauthenticated).
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -70,29 +77,40 @@ func NewRouter(deps Deps) chi.Router {
 		r.Get("/v1/me", deps.MeHandler.GetMe)
 		r.Put("/v1/me/profile", deps.MeHandler.UpsertProfile)
 
-		// Discovery endpoints (Phase 4) — rate-limited.
+		// Discovery endpoints (Phase 4) — rate-limited per user.
 		r.Group(func(r chi.Router) {
-			r.Use(discoveryLimiter.Middleware)
+			r.Use(discoveryLimiter.MiddlewareByUser)
 			r.Get("/v1/discovery", deps.DiscoveryHandler.GetFeed)
 			r.Post("/v1/discovery/{cardId}/pass", deps.DiscoveryHandler.Pass)
 			r.Post("/v1/discovery/{cardId}/connect", deps.DiscoveryHandler.Connect)
 		})
 
-		// Match + chat endpoints (Phase 5 + MVP matchmaking).
-		r.Get("/v1/matches", deps.MatchesHandler.ListMatches)
-		r.Delete("/v1/matches/{matchId}", deps.MatchesHandler.Unmatch)
-		r.Get("/v1/matches/{matchId}/sparks", deps.MatchesHandler.GetSparks)
-		r.Get("/v1/matches/{matchId}/messages", deps.ChatHandler.ListMessages)
-		r.Post("/v1/matches/{matchId}/messages", deps.ChatHandler.SendMessage)
+		// Match + chat endpoints (Phase 5 + MVP matchmaking) — rate-limited per user.
+		// Outbound message POST gets a tighter limit since it's the highest-cost
+		// write path (DB insert + counter increment + cache push + ws fanout).
+		r.Group(func(r chi.Router) {
+			r.Use(chatLimiter.MiddlewareByUser)
+			r.Get("/v1/matches", deps.MatchesHandler.ListMatches)
+			r.Delete("/v1/matches/{matchId}", deps.MatchesHandler.Unmatch)
+			r.Get("/v1/matches/{matchId}/sparks", deps.MatchesHandler.GetSparks)
+			r.Get("/v1/matches/{matchId}/messages", deps.ChatHandler.ListMessages)
+			r.Get("/v1/matches/{matchId}/profile", deps.MatchProfileHandler.GetProfile)
+		})
+		r.Group(func(r chi.Router) {
+			r.Use(messageLimiter.MiddlewareByUser)
+			r.Post("/v1/matches/{matchId}/messages", deps.ChatHandler.SendMessage)
+		})
 
 		// WebSocket endpoint (Phase 5).
+		// Not rate-limited at the HTTP layer — the connection is long-lived
+		// and per-message limits should be enforced at the message handler.
 		r.Get("/v1/ws", deps.WSHandler.ServeHTTP)
 
-		// Match profile + Secure Reveal (Phase 6).
-		r.Get("/v1/matches/{matchId}/profile", deps.MatchProfileHandler.GetProfile)
-
-		// Photo upload (Phase 6).
-		r.Post("/v1/me/photos/upload-url", deps.PhotoUploadHandler.CreateUploadURL)
+		// Photo upload (Phase 6) — tight limit; signed URL issuance is expensive.
+		r.Group(func(r chi.Router) {
+			r.Use(photoUploadLimiter.MiddlewareByUser)
+			r.Post("/v1/me/photos/upload-url", deps.PhotoUploadHandler.CreateUploadURL)
+		})
 	})
 
 	return r

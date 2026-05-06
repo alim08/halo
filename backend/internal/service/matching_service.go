@@ -2,7 +2,9 @@ package service
 
 import (
 	"encoding/json"
+	"log/slog"
 	"math"
+	"strings"
 	"time"
 
 	"halo/backend/internal/model"
@@ -84,8 +86,13 @@ type prompt struct {
 
 func parseProfileData(raw json.RawMessage) matchProfile {
 	var p matchProfile
-	if raw != nil {
-		_ = json.Unmarshal(raw, &p)
+	if len(raw) == 0 {
+		return p
+	}
+	if err := json.Unmarshal(raw, &p); err != nil {
+		// Don't fail the whole feed on a single malformed profile — score
+		// against zero values — but surface the error so it's not silent.
+		slog.Warn("matching: parse profile_data failed", "err", err)
 	}
 	return p
 }
@@ -123,10 +130,13 @@ func interestJaccard(a, b matchProfile) float64 {
 	return float64(intersect) / float64(union)
 }
 
-// vibeMatch returns 1.0 when both users share the exact same vibe string,
-// 0 otherwise (including when either vibe is empty).
+// vibeMatch returns 1.0 when both users share the same vibe string
+// (case-insensitive, whitespace-trimmed), 0 otherwise (including when
+// either vibe is empty).
 func vibeMatch(a, b matchProfile) float64 {
-	if a.Vibe != "" && a.Vibe == b.Vibe {
+	av := strings.TrimSpace(a.Vibe)
+	bv := strings.TrimSpace(b.Vibe)
+	if av != "" && strings.EqualFold(av, bv) {
 		return 1.0
 	}
 	return 0
@@ -165,13 +175,15 @@ func ageProximity(a, b *time.Time) float64 {
 	return 1.0 - (diff / maxAgeDiffYears)
 }
 
-// locationMatch returns 1.0 on exact coarse_location string equality,
-// 0.5 when either location is unknown, 0 on mismatch.
+// locationMatch returns 1.0 on case-insensitive coarse_location equality,
+// 0.5 when either location is unknown, 0 on mismatch. Case-folding avoids
+// ranking bugs from inconsistent capitalisation at write time
+// (e.g. "NYC" vs "nyc" both refer to the same place).
 func locationMatch(a, b string) float64 {
 	if a == "" || b == "" {
 		return 0.5
 	}
-	if a == b {
+	if strings.EqualFold(a, b) {
 		return 1.0
 	}
 	return 0

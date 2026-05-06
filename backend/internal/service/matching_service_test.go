@@ -319,7 +319,7 @@ func TestLocationMatch(t *testing.T) {
 		{"b empty returns neutral 0.5", "NYC", "", 0.5},
 		{"same location returns 1.0", "NYC", "NYC", 1.0},
 		{"different locations returns 0", "NYC", "LA", 0},
-		{"case sensitive mismatch returns 0", "nyc", "NYC", 0},
+		{"case-insensitive match returns 1.0", "nyc", "NYC", 1.0},
 	}
 
 	for _, tc := range tests {
