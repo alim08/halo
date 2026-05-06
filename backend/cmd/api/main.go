@@ -106,7 +106,7 @@ func run() error {
 	authHandler := handler.NewAuthHandler(authService)
 	meHandler := handler.NewMeHandler(profileService)
 	discoveryHandler := handler.NewDiscoveryHandler(discoveryService, intentService)
-	matchesHandler := handler.NewMatchesHandler(chatService, sparksService, userRepo)
+	matchesHandler := handler.NewMatchesHandler(chatService, sparksService, matchRepo, userRepo)
 	chatHandler := handler.NewChatHandler(chatService, wsHub, wsPubSub)
 	wsHandler := handler.NewWSHandler(wsHub, jwtService)
 	matchProfileHandler := handler.NewMatchProfileHandler(secureRevealService, chatService, userRepo)
@@ -116,6 +116,7 @@ func run() error {
 	// ── Build router ─────────────────────────────────────────
 	router := handler.NewRouter(handler.Deps{
 		JWTService:          jwtService,
+		UserRepo:            userRepo,
 		AuthHandler:         authHandler,
 		MeHandler:           meHandler,
 		DiscoveryHandler:    discoveryHandler,

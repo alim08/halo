@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"halo/backend/internal/model"
@@ -65,9 +66,11 @@ type DiscoveryResponse struct {
 	Cards []DiscoveryCard `json:"cards"`
 }
 
+// ErrNotOnboarded is returned when a non-onboarded user tries to access discovery.
+var ErrNotOnboarded = fmt.Errorf("user must complete onboarding before using discovery")
+
 // GetDiscoveryFeed returns ranked, text-only discovery cards for the user.
 func (s *DiscoveryService) GetDiscoveryFeed(ctx context.Context, userID string, limit int) (*DiscoveryResponse, error) {
-	// Fetch the viewer's profile for scoring.
 	viewer, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get viewer: %w", err)
@@ -77,8 +80,7 @@ func (s *DiscoveryService) GetDiscoveryFeed(ctx context.Context, userID string, 
 		return nil, ErrNotOnboarded
 	}
 
-	// Get raw candidates from the database.
-	candidates, err := s.discoveryRepo.FindCandidates(ctx, userID, limit)
+	candidates, err := s.discoveryRepo.FindCandidates(ctx, buildFindParams(viewer, limit))
 	if err != nil {
 		return nil, fmt.Errorf("find candidates: %w", err)
 	}
@@ -87,21 +89,83 @@ func (s *DiscoveryService) GetDiscoveryFeed(ctx context.Context, userID string, 
 		return &DiscoveryResponse{Cards: []DiscoveryCard{}}, nil
 	}
 
-	// Rank/score candidates (scores stay server-side).
+	// Score and rank in memory; scores stay server-side.
 	ranked := s.matchingService.RankCandidates(viewer, candidates)
 
-	// Shape into text-only cards — NO photo data in output.
 	cards := make([]DiscoveryCard, 0, len(ranked))
 	for _, sc := range ranked {
-		card := userToCard(sc.User)
-		cards = append(cards, card)
+		cards = append(cards, userToCard(sc.User))
 	}
 
 	return &DiscoveryResponse{Cards: cards}, nil
 }
 
-// ErrNotOnboarded is returned when a non-onboarded user tries to access discovery.
-var ErrNotOnboarded = fmt.Errorf("user must complete onboarding before using discovery")
+// buildFindParams extracts the viewer's hard-filter attributes from their
+// profile_data JSONB and constructs a FindCandidatesParams.
+func buildFindParams(viewer *model.User, limit int) repository.FindCandidatesParams {
+	var p repository.FindCandidatesParams
+	p.UserID = viewer.ID
+	p.Limit = limit
+
+	var profile struct {
+		Gender       string `json:"gender"`
+		InterestedIn string `json:"interested_in"`
+		AgePrefMin   int    `json:"age_pref_min"`
+		AgePrefMax   int    `json:"age_pref_max"`
+	}
+	if viewer.ProfileData != nil {
+		_ = json.Unmarshal(viewer.ProfileData, &profile)
+	}
+
+	p.ViewerGender = normalizeGender(profile.Gender)
+	p.ViewerTargetGender = targetGenderFromInterest(profile.InterestedIn)
+	p.ViewerAgePrefMin = profile.AgePrefMin
+	p.ViewerAgePrefMax = profile.AgePrefMax
+	p.ViewerAge = ageInYears(viewer.Birthdate)
+
+	return p
+}
+
+// normalizeGender maps common gender strings to "man" or "woman".
+// Other values are lowercased and returned as-is for forward-compatibility.
+func normalizeGender(g string) string {
+	switch strings.ToLower(strings.TrimSpace(g)) {
+	case "man", "male":
+		return "man"
+	case "woman", "female":
+		return "woman"
+	default:
+		return strings.ToLower(strings.TrimSpace(g))
+	}
+}
+
+// targetGenderFromInterest converts an "interested_in" value to the
+// canonical target gender for SQL filtering. Returns "everyone" when the
+// viewer is not filtering by a specific gender, causing the filter to be skipped.
+func targetGenderFromInterest(interestedIn string) string {
+	switch strings.ToLower(strings.TrimSpace(interestedIn)) {
+	case "men", "man", "male":
+		return "man"
+	case "women", "woman", "female":
+		return "woman"
+	default:
+		// "everyone", "all", nonbinary flags, or unknown → no gender filter.
+		return "everyone"
+	}
+}
+
+// ageInYears returns the user's age in whole years, or 0 if birthdate is nil.
+func ageInYears(birthdate *time.Time) int {
+	if birthdate == nil {
+		return 0
+	}
+	now := time.Now()
+	age := now.Year() - birthdate.Year()
+	if now.YearDay() < birthdate.YearDay() {
+		age--
+	}
+	return age
+}
 
 // userToCard converts a User model to a text-only DiscoveryCard.
 // This is the last enforcement point: no photo URLs, no scores, no IDs beyond card_id.
@@ -113,7 +177,6 @@ func userToCard(u *model.User) DiscoveryCard {
 		Location: u.CoarseLocation,
 	}
 
-	// Extract public text fields from profile_data.
 	var profile struct {
 		Vibe    json.RawMessage `json:"vibe"`
 		Tags    []string        `json:"tags"`
@@ -130,7 +193,6 @@ func userToCard(u *model.User) DiscoveryCard {
 		_ = json.Unmarshal(u.ProfileData, &profile)
 	}
 
-	// Build vibe_tags: include vibe values, legacy tags, and interests.
 	vibe := extractStringMap(profile.Vibe)
 	vibeTags := make([]string, 0)
 	vibeTags = append(vibeTags, mapValues(vibe)...)
@@ -165,7 +227,6 @@ func userToCard(u *model.User) DiscoveryCard {
 		}
 	}
 
-	// Build prompt_answers.
 	answers := make([]PromptAnswer, 0, len(profile.Prompts))
 	for _, p := range profile.Prompts {
 		if p.Answer != "" {
@@ -205,7 +266,6 @@ func mapValues(grouped map[string]string) []string {
 			values = append(values, value)
 		}
 	}
-
 	return values
 }
 
@@ -224,14 +284,12 @@ func SanitizeDiscoveryResponse(resp *DiscoveryResponse) *DiscoveryResponse {
 
 	clean := make([]DiscoveryCard, 0, len(resp.Cards))
 	for _, c := range resp.Cards {
-		// Validate required fields.
 		if c.CardID == "" {
 			continue
 		}
 		if c.Age < 18 {
 			c.Age = 18
 		}
-		// Ensure slices are never nil (consistent JSON output).
 		if c.VibeTags == nil {
 			c.VibeTags = []string{}
 		}
@@ -247,7 +305,7 @@ func SanitizeDiscoveryResponse(resp *DiscoveryResponse) *DiscoveryResponse {
 	return &DiscoveryResponse{Cards: clean}
 }
 
-// computeAge returns the user's age in whole years.
+// computeAge returns the user's age in whole years, floored at 18.
 func computeAge(birthdate *time.Time) int {
 	if birthdate == nil {
 		return 0
@@ -257,7 +315,6 @@ func computeAge(birthdate *time.Time) int {
 	if now.YearDay() < birthdate.YearDay() {
 		age--
 	}
-	// Floor at 18 — validated at onboarding time.
 	if age < 18 {
 		age = 18
 	}

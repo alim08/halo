@@ -119,6 +119,19 @@ func (r *UserRepository) UpdateProfile(ctx context.Context, id string, birthdate
 	return u, nil
 }
 
+// TouchLastActive sets users.last_active_at to the current time.
+// This is a best-effort call; callers may ignore the returned error.
+func (r *UserRepository) TouchLastActive(ctx context.Context, userID string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE users SET last_active_at = NOW() WHERE id = $1`,
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("touch last active: %w", err)
+	}
+	return nil
+}
+
 // isDuplicateKeyError checks for Postgres unique violation (23505).
 func isDuplicateKeyError(err error) bool {
 	return err != nil && contains(err.Error(), "23505")

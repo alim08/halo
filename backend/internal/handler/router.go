@@ -10,11 +10,13 @@ import (
 	"halo/backend/internal/auth"
 	"halo/backend/internal/handler/middleware"
 	"halo/backend/internal/observability"
+	"halo/backend/internal/repository"
 )
 
 // Deps holds all handler dependencies injected from main.
 type Deps struct {
 	JWTService          *auth.JWTService
+	UserRepo            *repository.UserRepository
 	AuthHandler         *AuthHandler
 	MeHandler           *MeHandler
 	DiscoveryHandler    *DiscoveryHandler
@@ -63,6 +65,7 @@ func NewRouter(deps Deps) chi.Router {
 	// Protected routes (require valid Bearer token).
 	r.Group(func(r chi.Router) {
 		r.Use(auth.Middleware(deps.JWTService))
+		r.Use(middleware.TouchLastActive(deps.UserRepo))
 
 		r.Get("/v1/me", deps.MeHandler.GetMe)
 		r.Put("/v1/me/profile", deps.MeHandler.UpsertProfile)
@@ -75,8 +78,9 @@ func NewRouter(deps Deps) chi.Router {
 			r.Post("/v1/discovery/{cardId}/connect", deps.DiscoveryHandler.Connect)
 		})
 
-		// Match + chat endpoints (Phase 5).
+		// Match + chat endpoints (Phase 5 + MVP matchmaking).
 		r.Get("/v1/matches", deps.MatchesHandler.ListMatches)
+		r.Delete("/v1/matches/{matchId}", deps.MatchesHandler.Unmatch)
 		r.Get("/v1/matches/{matchId}/sparks", deps.MatchesHandler.GetSparks)
 		r.Get("/v1/matches/{matchId}/messages", deps.ChatHandler.ListMessages)
 		r.Post("/v1/matches/{matchId}/messages", deps.ChatHandler.SendMessage)

@@ -15,6 +15,7 @@ import (
 type MatchesHandler struct {
 	chatService   *service.ChatService
 	sparksService *service.SparksService
+	matchRepo     *repository.MatchRepository
 	userRepo      *repository.UserRepository
 }
 
@@ -22,11 +23,13 @@ type MatchesHandler struct {
 func NewMatchesHandler(
 	chatService *service.ChatService,
 	sparksService *service.SparksService,
+	matchRepo *repository.MatchRepository,
 	userRepo *repository.UserRepository,
 ) *MatchesHandler {
 	return &MatchesHandler{
 		chatService:   chatService,
 		sparksService: sparksService,
+		matchRepo:     matchRepo,
 		userRepo:      userRepo,
 	}
 }
@@ -116,4 +119,55 @@ func (h *MatchesHandler) GetSparks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httputil.EncodeJSON(w, http.StatusOK, resp)
+}
+
+// Unmatch handles DELETE /v1/matches/{matchId}.
+// Soft-deletes the match by setting unmatched_at and unmatched_by.
+// Only the match participants may unmatch. Returns 204 on success.
+func (h *MatchesHandler) Unmatch(w http.ResponseWriter, r *http.Request) {
+	userID := auth.UserIDFromContext(r.Context())
+	if userID == "" {
+		httputil.Unauthorized(w, "not authenticated")
+		return
+	}
+
+	matchID := matchIDFromRequest(r)
+	if matchID == "" {
+		httputil.BadRequest(w, "matchId is required")
+		return
+	}
+
+	// Fetch match first to separate "not found" from "not a participant".
+	m, err := h.matchRepo.GetByID(r.Context(), matchID)
+	if err != nil {
+		if errors.Is(err, repository.ErrMatchNotFound) {
+			httputil.NotFound(w, "match not found")
+			return
+		}
+		httputil.InternalError(w)
+		return
+	}
+
+	if m.UserAID != userID && m.UserBID != userID {
+		httputil.Forbidden(w, "not a participant")
+		return
+	}
+
+	// Already unmatched — treat as idempotent success.
+	if m.UnmatchedAt != nil {
+		httputil.NoContent(w)
+		return
+	}
+
+	if err := h.matchRepo.Unmatch(r.Context(), matchID, userID); err != nil {
+		if errors.Is(err, repository.ErrMatchNotFound) {
+			// Race: another request unmatched simultaneously — idempotent.
+			httputil.NoContent(w)
+			return
+		}
+		httputil.InternalError(w)
+		return
+	}
+
+	httputil.NoContent(w)
 }

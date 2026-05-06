@@ -25,16 +25,16 @@ type ScoredCandidate struct {
 }
 
 // RankCandidates scores and sorts candidates by descending compatibility.
-// The scoring algorithm considers vibe overlap, prompt completeness, age
-// proximity, and location match – all computed server-side only.
+// Scoring is deterministic and server-side only; it considers interest
+// overlap (Jaccard), vibe match, prompt completeness, age proximity,
+// location, and recency.
 func (s *MatchingService) RankCandidates(viewer *model.User, candidates []*model.User) []ScoredCandidate {
 	scored := make([]ScoredCandidate, 0, len(candidates))
 	for _, c := range candidates {
-		score := s.computeScore(viewer, c)
-		scored = append(scored, ScoredCandidate{User: c, Score: score})
+		scored = append(scored, ScoredCandidate{User: c, Score: s.computeScore(viewer, c)})
 	}
 
-	// Sort descending by score (simple insertion sort – candidate list is small).
+	// Insertion sort — candidate pool is small (≤200 after hard filters).
 	for i := 1; i < len(scored); i++ {
 		for j := i; j > 0 && scored[j].Score > scored[j-1].Score; j-- {
 			scored[j], scored[j-1] = scored[j-1], scored[j]
@@ -44,36 +44,37 @@ func (s *MatchingService) RankCandidates(viewer *model.User, candidates []*model
 	return scored
 }
 
-// computeScore produces a server-only compatibility score.
-// Factors: vibe overlap (40%), prompt completeness (20%), age proximity (20%),
-// location match (20%).
+// computeScore returns a [0, 1] compatibility score.
+//
+// Weight breakdown:
+//   - Interests Jaccard similarity:  35%
+//   - Vibe string match:             10%
+//   - Prompt completeness:           20%
+//   - Age proximity:                 20%
+//   - Location match:                 5%
+//   - Recency (last_active_at):      10%
 func (s *MatchingService) computeScore(viewer, candidate *model.User) float64 {
-	var score float64
+	vp := parseProfileData(viewer.ProfileData)
+	cp := parseProfileData(candidate.ProfileData)
 
-	viewerProfile := parseProfileData(viewer.ProfileData)
-	candidateProfile := parseProfileData(candidate.ProfileData)
-
-	// Vibe overlap — 40% weight.
-	score += 0.4 * vibeOverlap(viewerProfile, candidateProfile)
-
-	// Prompt completeness — 20% weight.
-	score += 0.2 * promptCompleteness(candidateProfile)
-
-	// Age proximity — 20% weight.
-	score += 0.2 * ageProximity(viewer.Birthdate, candidate.Birthdate)
-
-	// Location match — 20% weight.
-	score += 0.2 * locationMatch(viewer.CoarseLocation, candidate.CoarseLocation)
+	score := 0.35*interestJaccard(vp, cp) +
+		0.10*vibeMatch(vp, cp) +
+		0.20*promptCompleteness(cp) +
+		0.20*ageProximity(viewer.Birthdate, candidate.Birthdate) +
+		0.05*locationMatch(viewer.CoarseLocation, candidate.CoarseLocation) +
+		0.10*recencyScore(candidate.LastActiveAt)
 
 	return score
 }
 
-// ── Internal helpers (all unexported) ────────────────────
+// ── Profile data types ────────────────────────────────────────────────────────
 
-type profileMap struct {
-	Vibe    string   `json:"vibe"`
-	Tags    []string `json:"tags"`
-	Prompts []prompt `json:"prompts"`
+// matchProfile holds the subset of profile_data fields used by the scoring algorithm.
+type matchProfile struct {
+	Vibe      string   `json:"vibe"`
+	Tags      []string `json:"tags"`
+	Interests []string `json:"interests"`
+	Prompts   []prompt `json:"prompts"`
 }
 
 type prompt struct {
@@ -81,82 +82,120 @@ type prompt struct {
 	Answer   string `json:"answer"`
 }
 
-func parseProfileData(raw json.RawMessage) profileMap {
-	var p profileMap
+func parseProfileData(raw json.RawMessage) matchProfile {
+	var p matchProfile
 	if raw != nil {
 		_ = json.Unmarshal(raw, &p)
 	}
 	return p
 }
 
-// vibeOverlap returns 1.0 if vibes match, 0.5 for tag overlap > 0, else 0.
-func vibeOverlap(a, b profileMap) float64 {
+// ── Scoring functions (all unexported) ───────────────────────────────────────
+
+// interestJaccard computes |A∩B| / |A∪B| over the interests lists.
+// Returns 0 when either or both lists are empty (undefined → 0 by convention).
+func interestJaccard(a, b matchProfile) float64 {
+	if len(a.Interests) == 0 || len(b.Interests) == 0 {
+		return 0
+	}
+
+	setA := make(map[string]struct{}, len(a.Interests))
+	for _, v := range a.Interests {
+		setA[v] = struct{}{}
+	}
+
+	var intersect int
+	setB := make(map[string]struct{}, len(b.Interests))
+	for _, v := range b.Interests {
+		setB[v] = struct{}{}
+		if _, ok := setA[v]; ok {
+			intersect++
+		}
+	}
+
+	union := len(setA) + len(setB) - intersect
+	if union == 0 {
+		return 0
+	}
+	return float64(intersect) / float64(union)
+}
+
+// vibeMatch returns 1.0 when both users share the exact same vibe string,
+// 0 otherwise (including when either vibe is empty).
+func vibeMatch(a, b matchProfile) float64 {
 	if a.Vibe != "" && a.Vibe == b.Vibe {
 		return 1.0
 	}
-
-	// Fall back to tag overlap.
-	if len(a.Tags) == 0 || len(b.Tags) == 0 {
-		return 0
-	}
-	tagSet := make(map[string]struct{}, len(a.Tags))
-	for _, t := range a.Tags {
-		tagSet[t] = struct{}{}
-	}
-	overlap := 0
-	for _, t := range b.Tags {
-		if _, ok := tagSet[t]; ok {
-			overlap++
-		}
-	}
-	if overlap == 0 {
-		return 0
-	}
-	// Jaccard-ish: overlap / max(len_a, len_b).
-	maxLen := len(a.Tags)
-	if len(b.Tags) > maxLen {
-		maxLen = len(b.Tags)
-	}
-	return float64(overlap) / float64(maxLen)
+	return 0
 }
 
-// promptCompleteness returns 1.0 if candidate has 3+ prompts answered,
-// partial credit for fewer.
-func promptCompleteness(p profileMap) float64 {
+// promptCompleteness returns 1.0 when the candidate has answered 3+ prompts.
+// Partial credit: answered / 3.
+func promptCompleteness(p matchProfile) float64 {
 	answered := 0
 	for _, pr := range p.Prompts {
 		if pr.Answer != "" {
 			answered++
 		}
 	}
-	if answered >= 3 {
+	const fullPromptCount = 3
+	if answered >= fullPromptCount {
 		return 1.0
 	}
-	return float64(answered) / 3.0
+	return float64(answered) / float64(fullPromptCount)
 }
 
-// ageProximity returns a 0-1 score based on how close in age the two users are.
-// Same age = 1.0, 10+ years apart = 0.
+// ageProximity returns a [0, 1] score — same age = 1.0, 10+ years apart = 0.
+// Returns 0.5 (neutral) when either birthdate is unknown.
 func ageProximity(a, b *time.Time) float64 {
 	if a == nil || b == nil {
-		return 0.5 // neutral if unknown
+		return 0.5
 	}
-	yearsA := time.Since(*a).Hours() / 8766
-	yearsB := time.Since(*b).Hours() / 8766
+	const hoursPerYear = 8766.0
+	const maxAgeDiffYears = 10.0
+	yearsA := time.Since(*a).Hours() / hoursPerYear
+	yearsB := time.Since(*b).Hours() / hoursPerYear
 	diff := math.Abs(yearsA - yearsB)
-	if diff >= 10 {
+	if diff >= maxAgeDiffYears {
 		return 0
 	}
-	return 1.0 - (diff / 10.0)
+	return 1.0 - (diff / maxAgeDiffYears)
 }
 
-// locationMatch returns 1.0 if locations match, 0 otherwise.
+// locationMatch returns 1.0 on exact coarse_location string equality,
+// 0.5 when either location is unknown, 0 on mismatch.
 func locationMatch(a, b string) float64 {
 	if a == "" || b == "" {
-		return 0.5 // neutral if unknown
+		return 0.5
 	}
 	if a == b {
 		return 1.0
 	}
 	return 0
+}
+
+// recencyScore returns a step-bin score based on the candidate's last_active_at:
+//
+//	< 1 day  → 0.30
+//	< 7 days → 0.20
+//	< 30 days → 0.10
+//	≥ 30 days or unknown → 0.0
+//
+// Step bins are intentionally coarse — the goal is "is this account live?",
+// not real-time presence detection.
+func recencyScore(lastActive *time.Time) float64 {
+	if lastActive == nil {
+		return 0
+	}
+	age := time.Since(*lastActive)
+	switch {
+	case age < 24*time.Hour:
+		return 0.30
+	case age < 7*24*time.Hour:
+		return 0.20
+	case age < 30*24*time.Hour:
+		return 0.10
+	default:
+		return 0
+	}
 }

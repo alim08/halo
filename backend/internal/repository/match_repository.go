@@ -14,6 +14,9 @@ import (
 // ErrMatchNotFound is returned when a match lookup yields no rows.
 var ErrMatchNotFound = errors.New("match not found")
 
+// ErrNotParticipant is returned when the requesting user is not part of the match.
+var ErrNotParticipant = errors.New("not a match participant")
+
 // MatchRepository handles match persistence.
 type MatchRepository struct {
 	pool *pgxpool.Pool
@@ -41,18 +44,20 @@ func (r *MatchRepository) CreateMatch(ctx context.Context, userAID, userBID stri
 	return matchID, nil
 }
 
-// GetByID retrieves a match by its primary key.
+// GetByID retrieves a match by its primary key, including soft-delete fields.
 func (r *MatchRepository) GetByID(ctx context.Context, matchID string) (*model.Match, error) {
 	m := &model.Match{}
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, user_a_id, user_b_id, current_connection_level,
 		        message_count, user_a_counted_sent, user_b_counted_sent,
-		        last_message_at, created_at, updated_at
+		        last_message_at, unmatched_at, unmatched_by,
+		        created_at, updated_at
 		 FROM matches WHERE id = $1`, matchID,
 	).Scan(
 		&m.ID, &m.UserAID, &m.UserBID, &m.CurrentConnectionLevel,
 		&m.MessageCount, &m.UserACountedSent, &m.UserBCountedSent,
-		&m.LastMessageAt, &m.CreatedAt, &m.UpdatedAt,
+		&m.LastMessageAt, &m.UnmatchedAt, &m.UnmatchedBy,
+		&m.CreatedAt, &m.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -76,9 +81,11 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID string, limit i
 		rows, err = r.pool.Query(ctx,
 			`SELECT id, user_a_id, user_b_id, current_connection_level,
 			        message_count, user_a_counted_sent, user_b_counted_sent,
-			        last_message_at, created_at, updated_at
+			        last_message_at, unmatched_at, unmatched_by,
+			        created_at, updated_at
 			 FROM matches
 			 WHERE (user_a_id = $1 OR user_b_id = $1)
+			   AND unmatched_at IS NULL
 			   AND created_at < (SELECT created_at FROM matches WHERE id = $3)
 			 ORDER BY COALESCE(last_message_at, created_at) DESC
 			 LIMIT $2`,
@@ -88,9 +95,11 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID string, limit i
 		rows, err = r.pool.Query(ctx,
 			`SELECT id, user_a_id, user_b_id, current_connection_level,
 			        message_count, user_a_counted_sent, user_b_counted_sent,
-			        last_message_at, created_at, updated_at
+			        last_message_at, unmatched_at, unmatched_by,
+			        created_at, updated_at
 			 FROM matches
-			 WHERE user_a_id = $1 OR user_b_id = $1
+			 WHERE (user_a_id = $1 OR user_b_id = $1)
+			   AND unmatched_at IS NULL
 			 ORDER BY COALESCE(last_message_at, created_at) DESC
 			 LIMIT $2`,
 			userID, limit,
@@ -107,7 +116,8 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID string, limit i
 		if err := rows.Scan(
 			&m.ID, &m.UserAID, &m.UserBID, &m.CurrentConnectionLevel,
 			&m.MessageCount, &m.UserACountedSent, &m.UserBCountedSent,
-			&m.LastMessageAt, &m.CreatedAt, &m.UpdatedAt,
+			&m.LastMessageAt, &m.UnmatchedAt, &m.UnmatchedBy,
+			&m.CreatedAt, &m.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan match: %w", err)
 		}
@@ -145,6 +155,28 @@ func (r *MatchRepository) IncrementMessageCount(ctx context.Context, matchID, se
 	)
 	if err != nil {
 		return fmt.Errorf("increment message count: %w", err)
+	}
+	return nil
+}
+
+// Unmatch soft-deletes a match by setting unmatched_at and unmatched_by.
+// Returns ErrMatchNotFound if the match does not exist, is already unmatched,
+// or the requesting user is not a participant.
+func (r *MatchRepository) Unmatch(ctx context.Context, matchID, userID string) error {
+	result, err := r.pool.Exec(ctx,
+		`UPDATE matches
+		 SET unmatched_at = NOW(),
+		     unmatched_by = $2::uuid
+		 WHERE id = $1
+		   AND (user_a_id = $2::uuid OR user_b_id = $2::uuid)
+		   AND unmatched_at IS NULL`,
+		matchID, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("unmatch: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return ErrMatchNotFound
 	}
 	return nil
 }
