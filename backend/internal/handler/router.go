@@ -39,7 +39,7 @@ func NewRouter(deps Deps) chi.Router {
 	r.Use(observability.AuditMiddleware)
 
 	// Rate limiters.
-	authLimiter := middleware.NewRateLimiter(20, 5, time.Minute)      // 20 req/min for auth
+	authLimiter := middleware.NewRateLimiter(20, 5, time.Minute)       // 20 req/min for auth
 	discoveryLimiter := middleware.NewRateLimiter(60, 15, time.Minute) // 60 req/min for discovery
 
 	// Health check (unauthenticated).
@@ -66,6 +66,7 @@ func NewRouter(deps Deps) chi.Router {
 
 		r.Get("/v1/me", deps.MeHandler.GetMe)
 		r.Put("/v1/me/profile", deps.MeHandler.UpsertProfile)
+		r.Get("/v1/profile/options", deps.MeHandler.GetProfileOptions)
 
 		// Discovery endpoints (Phase 4) — rate-limited.
 		r.Group(func(r chi.Router) {

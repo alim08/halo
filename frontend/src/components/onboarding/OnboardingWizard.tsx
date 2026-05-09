@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOnboarding } from "./useOnboarding";
+import { API_BASE } from "@/lib/api";
 
 // ── Step definitions ─────────────────────────────────────
 
@@ -19,28 +20,6 @@ const RELATIONSHIP_INTENTIONS_OPTIONS = [
   "Open to exploring",
   "Marriage-minded",
   "Still figuring it out",
-];
-
-const RACE_ETHNICITY_OPTIONS = [
-  "Asian",
-  "Black/African",
-  "Hispanic/Latino",
-  "Middle Eastern/North African",
-  "Pacific Islander",
-  "White",
-  "Other",
-  "Prefer not to say",
-];
-
-const RACE_ETHNICITY_PREFERENCE_OPTIONS = [
-  "Open to all",
-  "Asian",
-  "Black/African",
-  "Hispanic/Latino",
-  "Middle Eastern/North African",
-  "Pacific Islander",
-  "White",
-  "Other",
 ];
 
 const AGE_PRESET_OPTIONS = [
@@ -165,8 +144,11 @@ export function OnboardingWizard() {
     loading,
     saving,
     error,
+    restoreError,
+    profileOptions,
     nextStep,
     prevStep,
+    retryRestore,
     totalSteps,
   } = useOnboarding();
 
@@ -174,6 +156,25 @@ export function OnboardingWizard() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-gray-400">Loading your progress…</div>
+      </div>
+    );
+  }
+
+  if (restoreError) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="w-full max-w-sm space-y-4 text-center">
+          <div className="rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">
+            {restoreError}
+          </div>
+          <button
+            type="button"
+            onClick={retryRestore}
+            className="w-full rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 transition-opacity"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     );
   }
@@ -202,6 +203,8 @@ export function OnboardingWizard() {
         <BasicsStep
           birthdate={state.birthdate}
           raceEthnicity={state.race_ethnicity}
+          raceEthnicityOptions={profileOptions.raceEthnicity}
+          raceEthnicityExclusive={profileOptions.raceEthnicityExclusive}
           location={state.coarse_location}
           onNext={(birthdate, race_ethnicity, location) =>
             nextStep({ birthdate, race_ethnicity, coarse_location: location })
@@ -248,6 +251,9 @@ export function OnboardingWizard() {
           agePrefMin={state.age_pref_min}
           agePrefMax={state.age_pref_max}
           raceEthnicityPreferences={state.race_ethnicity_preferences}
+          raceEthnicityPreferenceOptions={profileOptions.raceEthnicityPreferences}
+          raceEthnicityPreferenceExclusive={profileOptions.raceEthnicityPreferenceExclusive}
+          raceEthnicityPreferenceDefault={profileOptions.defaultRaceEthnicityPreferences}
           onNext={(age_pref_min, age_pref_max, race_ethnicity_preferences) =>
             nextStep({
               age_pref_min,
@@ -308,12 +314,16 @@ export function OnboardingWizard() {
 function BasicsStep({
   birthdate,
   raceEthnicity,
+  raceEthnicityOptions,
+  raceEthnicityExclusive,
   location,
   onNext,
   saving,
 }: {
   birthdate: string;
   raceEthnicity: string[];
+  raceEthnicityOptions: string[];
+  raceEthnicityExclusive: string;
   location: string;
   onNext: (birthdate: string, raceEthnicity: string[], location: string) => void;
   saving: boolean;
@@ -379,8 +389,7 @@ function BasicsStep({
     setLocationLoading(true);
     setLocationError("");
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-      const response = await fetch(`${apiBase}/v1/locations/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`${API_BASE}/v1/locations/search?q=${encodeURIComponent(query)}`);
 
       if (!response.ok) {
         const text = await response.text();
@@ -413,11 +422,11 @@ function BasicsStep({
 
   const toggleRaceEthnicity = (option: string) => {
     setSelectedRaceEthnicity((prev) => {
-      if (option === "Prefer not to say") {
+      if (option === raceEthnicityExclusive) {
         return prev.includes(option) ? [] : [option];
       }
 
-      const withoutPreferNot = prev.filter((item) => item !== "Prefer not to say");
+      const withoutPreferNot = prev.filter((item) => item !== raceEthnicityExclusive);
       if (withoutPreferNot.includes(option)) {
         return withoutPreferNot.filter((item) => item !== option);
       }
@@ -439,8 +448,7 @@ function BasicsStep({
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-          const response = await fetch(`${apiBase}/v1/locations/reverse-geocode?lat=${latitude}&lon=${longitude}`);
+          const response = await fetch(`${API_BASE}/v1/locations/reverse-geocode?lat=${latitude}&lon=${longitude}`);
 
           if (!response.ok) {
             const text = await response.text();
@@ -512,7 +520,7 @@ function BasicsStep({
     }
 
     if (selectedRaceEthnicity.length === 0) {
-      setLocalError("Please select your race/ethnicity or choose Prefer not to say");
+      setLocalError(`Please select your race/ethnicity or choose ${raceEthnicityExclusive}`);
       return;
     }
 
@@ -632,7 +640,7 @@ function BasicsStep({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {RACE_ETHNICITY_OPTIONS.map((option) => {
+          {raceEthnicityOptions.map((option) => {
             const isSelected = selectedRaceEthnicity.includes(option);
             return (
               <button
@@ -1057,6 +1065,9 @@ function AgeRacePreferenceStep({
   agePrefMin,
   agePrefMax,
   raceEthnicityPreferences,
+  raceEthnicityPreferenceOptions,
+  raceEthnicityPreferenceExclusive,
+  raceEthnicityPreferenceDefault,
   onNext,
   onBack,
   saving,
@@ -1064,6 +1075,9 @@ function AgeRacePreferenceStep({
   agePrefMin: number;
   agePrefMax: number;
   raceEthnicityPreferences: string[];
+  raceEthnicityPreferenceOptions: string[];
+  raceEthnicityPreferenceExclusive: string;
+  raceEthnicityPreferenceDefault: string[];
   onNext: (agePrefMin: number, agePrefMax: number, raceEthnicityPreferences: string[]) => void;
   onBack: () => void;
   saving: boolean;
@@ -1071,7 +1085,7 @@ function AgeRacePreferenceStep({
   const [minAge, setMinAge] = useState(clampAge(agePrefMin || 18));
   const [maxAge, setMaxAge] = useState(clampAge(agePrefMax || 99));
   const [selectedPreferences, setSelectedPreferences] = useState<string[]>(
-    raceEthnicityPreferences.length > 0 ? raceEthnicityPreferences : ["Open to all"]
+    raceEthnicityPreferences.length > 0 ? raceEthnicityPreferences : raceEthnicityPreferenceDefault
   );
 
   function applyPreset(min: number, max: number) {
@@ -1081,14 +1095,14 @@ function AgeRacePreferenceStep({
 
   function toggleRacePreference(option: string) {
     setSelectedPreferences((prev) => {
-      if (option === "Open to all") {
-        return ["Open to all"];
+      if (option === raceEthnicityPreferenceExclusive) {
+        return [raceEthnicityPreferenceExclusive];
       }
 
-      const withoutOpen = prev.filter((item) => item !== "Open to all");
+      const withoutOpen = prev.filter((item) => item !== raceEthnicityPreferenceExclusive);
       if (withoutOpen.includes(option)) {
         const next = withoutOpen.filter((item) => item !== option);
-        return next.length > 0 ? next : ["Open to all"];
+        return next.length > 0 ? next : raceEthnicityPreferenceDefault;
       }
       return [...withoutOpen, option];
     });
@@ -1188,7 +1202,7 @@ function AgeRacePreferenceStep({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {RACE_ETHNICITY_PREFERENCE_OPTIONS.map((option) => {
+          {raceEthnicityPreferenceOptions.map((option) => {
             const isSelected = selectedPreferences.includes(option);
             return (
               <button
@@ -1628,12 +1642,22 @@ function clampAge(value: number): number {
 function getAge(dateStr: string): number {
   // Parse YYYY-MM-DD to avoid timezone-sensitive UTC parsing.
   // Construct date in local timezone using new Date(year, month-1, day).
-  const [yearStr, monthStr, dayStr] = dateStr.split("-");
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
-  const day = parseInt(dayStr, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!match) return -1;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
 
   const birth = new Date(year, month - 1, day);
+  if (
+    birth.getFullYear() !== year ||
+    birth.getMonth() !== month - 1 ||
+    birth.getDate() !== day
+  ) {
+    return -1;
+  }
+
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();

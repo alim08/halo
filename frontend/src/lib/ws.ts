@@ -5,6 +5,8 @@
  * exponential back-off, and dispatches typed events.
  */
 
+import { API_BASE } from "./api";
+
 export type WSEventType = "new_message" | "match_created";
 
 export interface WSEvent<T = unknown> {
@@ -45,8 +47,7 @@ export class HaloWS {
 
   constructor(token: string) {
     this.token = token;
-    const httpBase =
-      process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+    const httpBase = API_BASE || (typeof window !== "undefined" ? window.location.origin : "");
     // Convert http(s) -> ws(s)
     this.baseUrl = httpBase
       .replace(/^https:/, "wss:")

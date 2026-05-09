@@ -23,6 +23,14 @@ type OnboardingState = {
   prompts: Array<{ prompt_id: string; question: string; answer: string }>;
 };
 
+type ProfileOptions = {
+  raceEthnicity: string[];
+  raceEthnicityExclusive: string;
+  raceEthnicityPreferences: string[];
+  raceEthnicityPreferenceExclusive: string;
+  defaultRaceEthnicityPreferences: string[];
+};
+
 const INITIAL_STATE: OnboardingState = {
   birthdate: "",
   coarse_location: "",
@@ -34,12 +42,20 @@ const INITIAL_STATE: OnboardingState = {
   relationship_intentions: [],
   age_pref_min: 18,
   age_pref_max: 99,
-  race_ethnicity_preferences: ["Open to all"],
+  race_ethnicity_preferences: [],
   lifestyle_habits: {},
   connection_style: {},
   interests: [],
   bio: "",
   prompts: [],
+};
+
+const EMPTY_PROFILE_OPTIONS: ProfileOptions = {
+  raceEthnicity: [],
+  raceEthnicityExclusive: "",
+  raceEthnicityPreferences: [],
+  raceEthnicityPreferenceExclusive: "",
+  defaultRaceEthnicityPreferences: [],
 };
 
 const TOTAL_STEPS = 9;
@@ -56,14 +72,23 @@ export function useOnboarding() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [restoreError, setRestoreError] = useState("");
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
+  const [profileOptions, setProfileOptions] = useState<ProfileOptions>(EMPTY_PROFILE_OPTIONS);
 
   // Resume: fetch current profile on mount.
   useEffect(() => {
     let cancelled = false;
 
     async function restore() {
+      setLoading(true);
+      setError("");
+      setRestoreError("");
+
       try {
-        const me: MeResponse = await api.me.get();
+        const [me, options]: [MeResponse, Awaited<ReturnType<typeof api.me.getProfileOptions>>] =
+          await Promise.all([api.me.get(), api.me.getProfileOptions()]);
+        const defaultRaceEthnicityPreferences = options.default_race_ethnicity_preferences;
 
         if (me.is_onboarded) {
           router.replace("/discovery");
@@ -81,10 +106,10 @@ export function useOnboarding() {
           interested_in: (pd.interested_in as string[]) || [],
           vibe: (pd.vibe as Record<string, string>) || {},
           relationship_intentions: (pd.relationship_intentions as string[]) || [],
-          age_pref_min: readAgePreference(pd.age_pref_min, 0),
-          age_pref_max: readAgePreference(pd.age_pref_max, 0),
+          age_pref_min: readAgePreference(pd.age_pref_min, INITIAL_STATE.age_pref_min),
+          age_pref_max: readAgePreference(pd.age_pref_max, INITIAL_STATE.age_pref_max),
           race_ethnicity_preferences:
-            (pd.race_ethnicity_preferences as string[]) || ["Open to all"],
+            (pd.race_ethnicity_preferences as string[]) || defaultRaceEthnicityPreferences,
           lifestyle_habits: (pd.lifestyle_habits as Record<string, string>) || {},
           connection_style: (pd.connection_style as Record<string, string>) || {},
           interests: (pd.interests as string[]) || [],
@@ -98,12 +123,24 @@ export function useOnboarding() {
         };
 
         if (!cancelled) {
+          setProfileOptions({
+            raceEthnicity: options.race_ethnicity,
+            raceEthnicityExclusive: options.race_ethnicity_exclusive,
+            raceEthnicityPreferences: options.race_ethnicity_preferences,
+            raceEthnicityPreferenceExclusive: options.race_ethnicity_preference_exclusive,
+            defaultRaceEthnicityPreferences,
+          });
           setState(restored);
           // Determine which step to resume at.
           setStep(computeResumeStep(restored));
         }
-      } catch {
-        // If fetch fails (e.g. expired token), let the page-level guard redirect.
+      } catch (err: unknown) {
+        console.error("[Onboarding] restore failed:", err);
+        if (!cancelled) {
+          const message = restoreFailureMessage(err);
+          setRestoreError(message);
+          setError(message);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -113,7 +150,14 @@ export function useOnboarding() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, restoreAttempt]);
+
+  const retryRestore = useCallback(() => {
+    setLoading(true);
+    setError("");
+    setRestoreError("");
+    setRestoreAttempt((attempt) => attempt + 1);
+  }, []);
 
   // Persist current step's data to the server.
   const saveProgress = useCallback(
@@ -122,7 +166,6 @@ export function useOnboarding() {
       setError("");
 
       const merged = { ...state, ...partial };
-      setState(merged);
 
       try {
         const payload: Record<string, unknown> = {};
@@ -163,10 +206,7 @@ export function useOnboarding() {
         }
 
         console.log("[Onboarding] Sending profile update:", {
-          birthdate: payload.birthdate,
-          coarseLocation: payload.coarse_location,
           profileDataKeys: Object.keys(profileData),
-          profileData,
         });
 
         const me = await api.me.updateProfile(
@@ -176,6 +216,8 @@ export function useOnboarding() {
             profile_data?: Record<string, unknown>;
           }
         );
+
+        setState(merged);
 
         console.log("[Onboarding] Server response:", {
           is_onboarded: me.is_onboarded,
@@ -224,8 +266,11 @@ export function useOnboarding() {
     loading,
     saving,
     error,
+    restoreError,
+    profileOptions,
     nextStep,
     prevStep,
+    retryRestore,
     saveProgress,
     totalSteps: TOTAL_STEPS,
   };
@@ -238,6 +283,7 @@ function computeResumeStep(s: OnboardingState): number {
   if (Object.keys(s.vibe).length === 0) return 2;
   if (s.relationship_intentions.length === 0) return 3;
   if (!hasValidAgePreferences(s.age_pref_min, s.age_pref_max)) return 4;
+  if (s.race_ethnicity_preferences.length === 0) return 4;
   if (Object.keys(s.lifestyle_habits).length === 0) return 5;
   if (Object.keys(s.connection_style).length === 0) return 6;
   if (s.interests.length === 0) return 7;
@@ -251,4 +297,12 @@ function readAgePreference(value: unknown, fallback: number): number {
 
 function hasValidAgePreferences(min: number, max: number): boolean {
   return Number.isFinite(min) && Number.isFinite(max) && min >= 18 && max <= 99 && min <= max;
+}
+
+function restoreFailureMessage(err: unknown): string {
+  if (err instanceof TypeError || (err instanceof Error && err.message.includes("fetch"))) {
+    return "We couldn't restore your progress. Check your connection and try again.";
+  }
+
+  return "We couldn't restore your progress. Try again.";
 }

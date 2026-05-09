@@ -2,9 +2,117 @@ package service
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestValidateBirthdate(t *testing.T) {
+	tests := []struct {
+		name      string
+		today     time.Time
+		birthdate *time.Time
+		wantErr   bool
+	}{
+		{
+			name:      "nil passes",
+			today:     time.Date(2026, time.May, 9, 12, 0, 0, 0, time.UTC),
+			birthdate: nil,
+			wantErr:   false,
+		},
+		{
+			name:      "age 17 rejects",
+			today:     time.Date(2026, time.May, 9, 12, 0, 0, 0, time.UTC),
+			birthdate: ptrTime(time.Date(2008, time.May, 10, 0, 0, 0, 0, time.UTC)),
+			wantErr:   true,
+		},
+		{
+			name:      "exact 18th birthday today passes",
+			today:     time.Date(2026, time.May, 9, 12, 0, 0, 0, time.UTC),
+			birthdate: ptrTime(time.Date(2008, time.May, 9, 0, 0, 0, 0, time.UTC)),
+			wantErr:   false,
+		},
+		{
+			name:      "day before 18th birthday rejects",
+			today:     time.Date(2026, time.May, 8, 12, 0, 0, 0, time.UTC),
+			birthdate: ptrTime(time.Date(2008, time.May, 9, 0, 0, 0, 0, time.UTC)),
+			wantErr:   true,
+		},
+		{
+			name:      "mar 2 non-leap birthdate on mar 1 leap year rejects",
+			today:     time.Date(2024, time.March, 1, 12, 0, 0, 0, time.UTC),
+			birthdate: ptrTime(time.Date(2006, time.March, 2, 0, 0, 0, 0, time.UTC)),
+			wantErr:   true,
+		},
+		{
+			name:      "mar 1 leap-year birthdate on mar 1 non-leap year passes",
+			today:     time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC),
+			birthdate: ptrTime(time.Date(2008, time.March, 1, 0, 0, 0, 0, time.UTC)),
+			wantErr:   false,
+		},
+	}
+
+	originalNow := now
+	defer func() {
+		now = originalNow
+	}()
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			now = func() time.Time {
+				return tc.today
+			}
+
+			err := ValidateBirthdate(tc.birthdate)
+			if tc.wantErr && err == nil {
+				t.Fatal("ValidateBirthdate() error = nil, want error")
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("ValidateBirthdate() error = %v, want nil", err)
+			}
+		})
+	}
+}
+
+func ptrTime(t time.Time) *time.Time {
+	return &t
+}
+
+func TestValidateCoarseLocation(t *testing.T) {
+	tests := []struct {
+		name           string
+		coarseLocation string
+		wantErr        bool
+	}{
+		{
+			name:           "empty passes",
+			coarseLocation: "",
+			wantErr:        false,
+		},
+		{
+			name:           "exactly 200 characters passes",
+			coarseLocation: strings.Repeat("a", 200),
+			wantErr:        false,
+		},
+		{
+			name:           "over 200 characters rejects",
+			coarseLocation: strings.Repeat("a", 201),
+			wantErr:        true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateCoarseLocation(tc.coarseLocation)
+			if tc.wantErr && err == nil {
+				t.Fatal("ValidateCoarseLocation() error = nil, want error")
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("ValidateCoarseLocation() error = %v, want nil", err)
+			}
+		})
+	}
+}
 
 func TestAgeInYearsHandlesLeapYearDayMismatch(t *testing.T) {
 	birthdate := time.Date(2006, time.March, 2, 0, 0, 0, 0, time.UTC)
@@ -83,6 +191,11 @@ func TestValidateProfileDataRaceEthnicity(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "too many self identification values",
+			raw:     `{"race_ethnicity":` + jsonArrayWithRepeatedValue("Asian", 21) + `}`,
+			wantErr: true,
+		},
+		{
 			name:    "valid open preference",
 			raw:     `{"race_ethnicity_preferences":["Open to all"]}`,
 			wantErr: false,
@@ -95,6 +208,11 @@ func TestValidateProfileDataRaceEthnicity(t *testing.T) {
 		{
 			name:    "unsupported preference",
 			raw:     `{"race_ethnicity_preferences":["Prefer not to say"]}`,
+			wantErr: true,
+		},
+		{
+			name:    "too many preference values",
+			raw:     `{"race_ethnicity_preferences":` + jsonArrayWithRepeatedValue("Asian", 21) + `}`,
 			wantErr: true,
 		},
 	}
@@ -110,6 +228,16 @@ func TestValidateProfileDataRaceEthnicity(t *testing.T) {
 			}
 		})
 	}
+}
+
+func jsonArrayWithRepeatedValue(value string, count int) string {
+	values := make([]string, count)
+	for i := range values {
+		values[i] = value
+	}
+
+	raw, _ := json.Marshal(values)
+	return string(raw)
 }
 
 func TestCheckOnboardingCompleteRequiresAgePreferences(t *testing.T) {

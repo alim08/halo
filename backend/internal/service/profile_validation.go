@@ -22,13 +22,27 @@ func ValidateBirthdate(birthdate *time.Time) error {
 		return nil // birthdate is optional during partial onboarding
 	}
 
-	today := time.Now()
+	today := now()
 	age := ageInYears(birthdate, today)
 
 	if age < 18 {
 		return &ProfileValidationError{
 			Field:   "birthdate",
 			Message: "you must be at least 18 years old",
+		}
+	}
+
+	return nil
+}
+
+var now = time.Now
+
+// ValidateCoarseLocation enforces the maximum stored location length.
+func ValidateCoarseLocation(coarseLocation string) error {
+	if len(coarseLocation) > 200 {
+		return &ProfileValidationError{
+			Field:   "coarse_location",
+			Message: "must be 200 characters or fewer",
 		}
 	}
 
@@ -51,26 +65,58 @@ func ageInYears(birthdate *time.Time, today time.Time) int {
 // for a user to be considered fully onboarded.
 var onboardingRequiredFields = []string{"race_ethnicity", "gender", "sexual_profile", "interested_in", "vibe", "relationship_intentions", "age_pref_min", "age_pref_max", "lifestyle_habits", "connection_style", "interests", "prompts"}
 
-var allowedRaceEthnicityValues = map[string]struct{}{
-	"Asian":                        {},
-	"Black/African":                {},
-	"Hispanic/Latino":              {},
-	"Middle Eastern/North African": {},
-	"Pacific Islander":             {},
-	"White":                        {},
-	"Other":                        {},
-	"Prefer not to say":            {},
+const raceEthnicityExclusiveOption = "Prefer not to say"
+const raceEthnicityPreferenceExclusiveOption = "Open to all"
+
+var allowedRaceEthnicityOptions = []string{
+	"Asian",
+	"Black/African",
+	"Hispanic/Latino",
+	"Middle Eastern/North African",
+	"Pacific Islander",
+	"White",
+	"Other",
+	raceEthnicityExclusiveOption,
 }
 
-var allowedRaceEthnicityPreferenceValues = map[string]struct{}{
-	"Open to all":                  {},
-	"Asian":                        {},
-	"Black/African":                {},
-	"Hispanic/Latino":              {},
-	"Middle Eastern/North African": {},
-	"Pacific Islander":             {},
-	"White":                        {},
-	"Other":                        {},
+var allowedRaceEthnicityPreferenceOptions = []string{
+	raceEthnicityPreferenceExclusiveOption,
+	"Asian",
+	"Black/African",
+	"Hispanic/Latino",
+	"Middle Eastern/North African",
+	"Pacific Islander",
+	"White",
+	"Other",
+}
+
+var allowedRaceEthnicityValues = stringSet(allowedRaceEthnicityOptions)
+var allowedRaceEthnicityPreferenceValues = stringSet(allowedRaceEthnicityPreferenceOptions)
+var defaultRaceEthnicityPreferenceOptions = []string{raceEthnicityPreferenceExclusiveOption}
+
+// AllowedRaceEthnicityOptions returns the selectable race/ethnicity values in display order.
+func AllowedRaceEthnicityOptions() []string {
+	return append([]string(nil), allowedRaceEthnicityOptions...)
+}
+
+// RaceEthnicityExclusiveOption returns the mutually exclusive opt-out value.
+func RaceEthnicityExclusiveOption() string {
+	return raceEthnicityExclusiveOption
+}
+
+// AllowedRaceEthnicityPreferenceOptions returns the selectable preference values in display order.
+func AllowedRaceEthnicityPreferenceOptions() []string {
+	return append([]string(nil), allowedRaceEthnicityPreferenceOptions...)
+}
+
+// RaceEthnicityPreferenceExclusiveOption returns the mutually exclusive open preference value.
+func RaceEthnicityPreferenceExclusiveOption() string {
+	return raceEthnicityPreferenceExclusiveOption
+}
+
+// DefaultRaceEthnicityPreferenceOptions returns the default race/ethnicity preferences.
+func DefaultRaceEthnicityPreferenceOptions() []string {
+	return append([]string(nil), defaultRaceEthnicityPreferenceOptions...)
 }
 
 // CheckOnboardingComplete determines whether a user has completed onboarding
@@ -118,10 +164,10 @@ func ValidateProfileData(raw json.RawMessage) error {
 	if err := validateAgePreferences(obj); err != nil {
 		return err
 	}
-	if err := validateStringArrayField(obj, "race_ethnicity", allowedRaceEthnicityValues, "Prefer not to say"); err != nil {
+	if err := validateStringArrayField(obj, "race_ethnicity", allowedRaceEthnicityValues, raceEthnicityExclusiveOption); err != nil {
 		return err
 	}
-	if err := validateStringArrayField(obj, "race_ethnicity_preferences", allowedRaceEthnicityPreferenceValues, "Open to all"); err != nil {
+	if err := validateStringArrayField(obj, "race_ethnicity_preferences", allowedRaceEthnicityPreferenceValues, raceEthnicityPreferenceExclusiveOption); err != nil {
 		return err
 	}
 
@@ -179,6 +225,14 @@ func validateAgePreferences(obj map[string]json.RawMessage) error {
 	return nil
 }
 
+func stringSet(values []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		set[value] = struct{}{}
+	}
+	return set
+}
+
 func validateStringArrayField(obj map[string]json.RawMessage, field string, allowed map[string]struct{}, exclusiveOption string) error {
 	raw, ok := obj[field]
 	if !ok {
@@ -190,6 +244,13 @@ func validateStringArrayField(obj map[string]json.RawMessage, field string, allo
 		return &ProfileValidationError{
 			Field:   field,
 			Message: "must be an array of strings",
+		}
+	}
+
+	if len(values) > 20 {
+		return &ProfileValidationError{
+			Field:   field,
+			Message: "too many values",
 		}
 	}
 

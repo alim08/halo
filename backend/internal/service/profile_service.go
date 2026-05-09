@@ -71,6 +71,11 @@ func (s *ProfileService) UpsertProfile(ctx context.Context, userID string, req *
 		return nil, err
 	}
 
+	// Validate coarse location length.
+	if err := ValidateCoarseLocation(req.CoarseLocation); err != nil {
+		return nil, err
+	}
+
 	// Validate profile_data structure.
 	if err := ValidateProfileData(req.ProfileData); err != nil {
 		return nil, err
@@ -141,9 +146,11 @@ func mergeJSON(base, patch json.RawMessage) json.RawMessage {
 	var patchMap map[string]json.RawMessage
 
 	if err := json.Unmarshal(base, &baseMap); err != nil {
+		slog.Warn("merge profile_data failed: invalid base JSON", "error", err)
 		return patch
 	}
 	if err := json.Unmarshal(patch, &patchMap); err != nil {
+		slog.Warn("merge profile_data failed: invalid patch JSON", "error", err)
 		return base
 	}
 
@@ -153,6 +160,7 @@ func mergeJSON(base, patch json.RawMessage) json.RawMessage {
 
 	merged, err := json.Marshal(baseMap)
 	if err != nil {
+		slog.Warn("merge profile_data failed: marshal merged JSON", "error", err)
 		return base
 	}
 	return merged
