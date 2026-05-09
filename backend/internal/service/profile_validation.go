@@ -23,12 +23,7 @@ func ValidateBirthdate(birthdate *time.Time) error {
 	}
 
 	today := time.Now()
-	age := today.Year() - birthdate.Year()
-
-	// Adjust if birthday hasn't occurred yet this year.
-	if today.YearDay() < birthdate.YearDay() {
-		age--
-	}
+	age := ageInYears(birthdate, today)
 
 	if age < 18 {
 		return &ProfileValidationError{
@@ -38,6 +33,18 @@ func ValidateBirthdate(birthdate *time.Time) error {
 	}
 
 	return nil
+}
+
+func ageInYears(birthdate *time.Time, today time.Time) int {
+	age := today.Year() - birthdate.Year()
+
+	// Adjust if birthday hasn't occurred yet this year.
+	if today.Month() < birthdate.Month() ||
+		(today.Month() == birthdate.Month() && today.Day() < birthdate.Day()) {
+		age--
+	}
+
+	return age
 }
 
 // onboardingRequiredFields are the profile_data keys that must be present

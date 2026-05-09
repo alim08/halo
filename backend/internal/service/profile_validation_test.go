@@ -6,6 +6,15 @@ import (
 	"time"
 )
 
+func TestAgeInYearsHandlesLeapYearDayMismatch(t *testing.T) {
+	birthdate := time.Date(2006, time.March, 2, 0, 0, 0, 0, time.UTC)
+	today := time.Date(2024, time.March, 1, 12, 0, 0, 0, time.UTC)
+
+	if got := ageInYears(&birthdate, today); got != 17 {
+		t.Fatalf("ageInYears() = %d, want 17", got)
+	}
+}
+
 func TestValidateProfileDataAgePreferences(t *testing.T) {
 	tests := []struct {
 		name    string

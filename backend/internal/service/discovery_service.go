@@ -253,10 +253,7 @@ func computeAge(birthdate *time.Time) int {
 		return 0
 	}
 	now := time.Now()
-	age := now.Year() - birthdate.Year()
-	if now.YearDay() < birthdate.YearDay() {
-		age--
-	}
+	age := ageInYears(birthdate, now)
 	// Floor at 18 — validated at onboarding time.
 	if age < 18 {
 		age = 18
