@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"halo/backend/internal/auth"
 	"halo/backend/internal/handler/httputil"
 )
 
@@ -44,12 +45,38 @@ func NewRateLimiter(rate, burst int, interval time.Duration) *RateLimiter {
 	return rl
 }
 
-// Middleware returns an HTTP middleware that enforces the rate limit.
+// Middleware returns an HTTP middleware that enforces the rate limit per IP.
+// Suitable for unauthenticated endpoints (login, registration).
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := r.RemoteAddr // chi RealIP middleware sets this to the real IP
 
 		if !rl.allow(ip) {
+			w.Header().Set("Retry-After", "60")
+			httputil.TooManyRequests(w, "rate limit exceeded, please try again later")
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// MiddlewareByUser returns an HTTP middleware that enforces the rate limit
+// per authenticated user (extracted from the request context). When the
+// context has no user ID — which on auth-gated routes shouldn't happen but
+// is treated defensively — the limit is keyed by IP. Use this for
+// endpoints behind auth.Middleware so multiple users behind the same NAT
+// don't share a bucket.
+func (rl *RateLimiter) MiddlewareByUser(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := auth.UserIDFromContext(r.Context())
+		if key == "" {
+			key = "ip:" + r.RemoteAddr
+		} else {
+			key = "user:" + key
+		}
+
+		if !rl.allow(key) {
 			w.Header().Set("Retry-After", "60")
 			httputil.TooManyRequests(w, "rate limit exceeded, please try again later")
 			return

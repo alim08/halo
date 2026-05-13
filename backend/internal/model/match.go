@@ -4,6 +4,7 @@ import "time"
 
 // Match represents the matches table.
 // user_a_id < user_b_id is enforced at write time (canonical ordering).
+// UnmatchedAt is non-nil for soft-deleted (unmatched) pairs.
 type Match struct {
 	ID                     string     `json:"match_id"`
 	UserAID                string     `json:"user_a_id"`
@@ -13,6 +14,8 @@ type Match struct {
 	UserACountedSent       int        `json:"-"`
 	UserBCountedSent       int        `json:"-"`
 	LastMessageAt          *time.Time `json:"last_message_at"`
+	UnmatchedAt            *time.Time `json:"unmatched_at,omitempty"`
+	UnmatchedBy            *string    `json:"unmatched_by,omitempty"`
 	CreatedAt              time.Time  `json:"created_at"`
 	UpdatedAt              time.Time  `json:"updated_at"`
 }

@@ -38,7 +38,7 @@ func (r *ConnectionIntentRepository) Create(ctx context.Context, fromUserID, toU
 		fromUserID, toUserID, intent,
 	).Scan(&ci.ID, &ci.FromUserID, &ci.ToUserID, &ci.Intent, &ci.CreatedAt)
 	if err != nil {
-		if isDuplicateKeyError(err) {
+		if isUniqueViolation(err) {
 			return nil, ErrIntentAlreadyExists
 		}
 		return nil, fmt.Errorf("create connection intent: %w", err)

@@ -60,3 +60,9 @@ func UserIDFromContext(ctx context.Context) string {
 	}
 	return ""
 }
+
+// NewContextWithUserID returns a copy of ctx with the authenticated user ID set.
+// Intended for handler tests that need to simulate an authenticated request.
+func NewContextWithUserID(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
+}
