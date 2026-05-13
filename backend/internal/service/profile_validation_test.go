@@ -52,18 +52,12 @@ func TestValidateBirthdate(t *testing.T) {
 		},
 	}
 
-	originalNow := now
-	defer func() {
-		now = originalNow
-	}()
-
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			now = func() time.Time {
-				return tc.today
-			}
+			t.Parallel()
 
-			err := ValidateBirthdate(tc.birthdate)
+			err := ValidateBirthdate(tc.birthdate, tc.today)
 			if tc.wantErr && err == nil {
 				t.Fatal("ValidateBirthdate() error = nil, want error")
 			}

@@ -19,16 +19,14 @@ func (e *ProfileValidationError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Field, e.Message)
 }
 
-// ValidateBirthdate enforces the 18+ rule.
-func ValidateBirthdate(birthdate *time.Time) error {
+// ValidateBirthdate enforces the 18+ rule. `today` is passed in so tests can
+// pin the clock without mutating package-level state.
+func ValidateBirthdate(birthdate *time.Time, today time.Time) error {
 	if birthdate == nil {
 		return nil // birthdate is optional during partial onboarding
 	}
 
-	today := now()
-	age := ageInYears(birthdate, today)
-
-	if age < 18 {
+	if ageInYears(birthdate, today) < 18 {
 		return &ProfileValidationError{
 			Field:   "birthdate",
 			Message: "you must be at least 18 years old",
@@ -37,8 +35,6 @@ func ValidateBirthdate(birthdate *time.Time) error {
 
 	return nil
 }
-
-var now = time.Now
 
 // rawZipPattern matches a bare US ZIP code (12345 or 12345-6789) with no city/state context.
 // We want stored locations to be human-readable ("Dania Beach, FL"), so we reject these

@@ -248,10 +248,6 @@ export function useOnboarding() {
           payload.profile_data = profileData;
         }
 
-        console.log("[Onboarding] Sending profile update:", {
-          profileDataKeys: Object.keys(profileData),
-        });
-
         const me = await api.me.updateProfile(
           payload as {
             birthdate?: string;
@@ -262,24 +258,15 @@ export function useOnboarding() {
 
         setState(merged);
 
-        console.log("[Onboarding] Server response:", {
-          is_onboarded: me.is_onboarded,
-          has_profile_data: !!me.profile_data,
-        });
-
         if (me.is_onboarded) {
-          console.log("[Onboarding] ✅ Complete! Navigating to /discovery");
           router.push("/discovery");
-          return true;
-        } else {
-          console.log("[Onboarding] ❌ Still not onboarded after save.");
         }
 
         return true;
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : "Failed to save progress";
-        console.error("[Onboarding] ❌ Error saving progress:", message);
+        console.error("[Onboarding] save failed:", message);
         setError(message);
         return false;
       } finally {

@@ -67,7 +67,7 @@ func (s *ProfileService) GetMe(ctx context.Context, userID string) (*MeResponse,
 // rather than replacing it.
 func (s *ProfileService) UpsertProfile(ctx context.Context, userID string, req *UpsertProfileRequest) (*MeResponse, error) {
 	// Validate birthdate (18+ rule).
-	if err := ValidateBirthdate(req.Birthdate); err != nil {
+	if err := ValidateBirthdate(req.Birthdate, time.Now()); err != nil {
 		return nil, err
 	}
 
