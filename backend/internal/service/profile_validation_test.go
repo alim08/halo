@@ -99,6 +99,36 @@ func TestValidateCoarseLocation(t *testing.T) {
 			coarseLocation: strings.Repeat("a", 201),
 			wantErr:        true,
 		},
+		{
+			name:           "200 multi-byte runes passes",
+			coarseLocation: strings.Repeat("東", 200),
+			wantErr:        false,
+		},
+		{
+			name:           "201 multi-byte runes rejects",
+			coarseLocation: strings.Repeat("東", 201),
+			wantErr:        true,
+		},
+		{
+			name:           "bare ZIP rejects",
+			coarseLocation: "33004",
+			wantErr:        true,
+		},
+		{
+			name:           "ZIP+4 rejects",
+			coarseLocation: "33004-1234",
+			wantErr:        true,
+		},
+		{
+			name:           "ZIP surrounded by whitespace rejects",
+			coarseLocation: "  33004  ",
+			wantErr:        true,
+		},
+		{
+			name:           "city with ZIP-like substring passes",
+			coarseLocation: "Dania Beach, FL 33004",
+			wantErr:        false,
+		},
 	}
 
 	for _, tc := range tests {

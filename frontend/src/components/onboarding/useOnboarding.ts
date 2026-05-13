@@ -31,6 +31,8 @@ type ProfileOptions = {
   defaultRaceEthnicityPreferences: string[];
 };
 
+// 0 is a sentinel for "not yet persisted"; the AgeRace step seeds 18/99 locally
+// when the user opens it, but the resume logic needs to distinguish "saved" from "default".
 const INITIAL_STATE: OnboardingState = {
   birthdate: "",
   coarse_location: "",
@@ -40,8 +42,8 @@ const INITIAL_STATE: OnboardingState = {
   interested_in: [],
   vibe: {},
   relationship_intentions: [],
-  age_pref_min: 18,
-  age_pref_max: 99,
+  age_pref_min: 0,
+  age_pref_max: 0,
   race_ethnicity_preferences: [],
   lifestyle_habits: {},
   connection_style: {},
@@ -56,6 +58,34 @@ const EMPTY_PROFILE_OPTIONS: ProfileOptions = {
   raceEthnicityPreferences: [],
   raceEthnicityPreferenceExclusive: "",
   defaultRaceEthnicityPreferences: [],
+};
+
+// Used when /v1/profile/options is unreachable; keeps the wizard usable.
+// Backend remains the source of truth — these are validated server-side on submit.
+const FALLBACK_PROFILE_OPTIONS: ProfileOptions = {
+  raceEthnicity: [
+    "Asian",
+    "Black/African",
+    "Hispanic/Latino",
+    "Middle Eastern/North African",
+    "Pacific Islander",
+    "White",
+    "Other",
+    "Prefer not to say",
+  ],
+  raceEthnicityExclusive: "Prefer not to say",
+  raceEthnicityPreferences: [
+    "Open to all",
+    "Asian",
+    "Black/African",
+    "Hispanic/Latino",
+    "Middle Eastern/North African",
+    "Pacific Islander",
+    "White",
+    "Other",
+  ],
+  raceEthnicityPreferenceExclusive: "Open to all",
+  defaultRaceEthnicityPreferences: ["Open to all"],
 };
 
 const TOTAL_STEPS = 9;
@@ -86,9 +116,18 @@ export function useOnboarding() {
       setRestoreError("");
 
       try {
-        const [me, options]: [MeResponse, Awaited<ReturnType<typeof api.me.getProfileOptions>>] =
-          await Promise.all([api.me.get(), api.me.getProfileOptions()]);
-        const defaultRaceEthnicityPreferences = options.default_race_ethnicity_preferences;
+        // /v1/me is required to know whether to resume the wizard or redirect.
+        // /v1/profile/options is static reference data — if it fails we fall back to
+        // FALLBACK_PROFILE_OPTIONS so a transient outage doesn't block the user.
+        const mePromise = api.me.get();
+        const optionsPromise = api.me.getProfileOptions().catch((err: unknown) => {
+          console.warn("[Onboarding] profile options fetch failed, using fallback:", err);
+          return null;
+        });
+        const [me, options]: [
+          MeResponse,
+          Awaited<ReturnType<typeof api.me.getProfileOptions>> | null,
+        ] = await Promise.all([mePromise, optionsPromise]);
 
         if (me.is_onboarded) {
           router.replace("/discovery");
@@ -109,7 +148,7 @@ export function useOnboarding() {
           age_pref_min: readAgePreference(pd.age_pref_min, INITIAL_STATE.age_pref_min),
           age_pref_max: readAgePreference(pd.age_pref_max, INITIAL_STATE.age_pref_max),
           race_ethnicity_preferences:
-            (pd.race_ethnicity_preferences as string[]) || defaultRaceEthnicityPreferences,
+            (pd.race_ethnicity_preferences as string[]) || [],
           lifestyle_habits: (pd.lifestyle_habits as Record<string, string>) || {},
           connection_style: (pd.connection_style as Record<string, string>) || {},
           interests: (pd.interests as string[]) || [],
@@ -123,13 +162,17 @@ export function useOnboarding() {
         };
 
         if (!cancelled) {
-          setProfileOptions({
-            raceEthnicity: options.race_ethnicity,
-            raceEthnicityExclusive: options.race_ethnicity_exclusive,
-            raceEthnicityPreferences: options.race_ethnicity_preferences,
-            raceEthnicityPreferenceExclusive: options.race_ethnicity_preference_exclusive,
-            defaultRaceEthnicityPreferences,
-          });
+          setProfileOptions(
+            options
+              ? {
+                  raceEthnicity: options.race_ethnicity,
+                  raceEthnicityExclusive: options.race_ethnicity_exclusive,
+                  raceEthnicityPreferences: options.race_ethnicity_preferences,
+                  raceEthnicityPreferenceExclusive: options.race_ethnicity_preference_exclusive,
+                  defaultRaceEthnicityPreferences: options.default_race_ethnicity_preferences,
+                }
+              : FALLBACK_PROFILE_OPTIONS,
+          );
           setState(restored);
           // Determine which step to resume at.
           setStep(computeResumeStep(restored));

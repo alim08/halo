@@ -3,7 +3,10 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // ProfileValidationError is a structured validation error.
@@ -37,12 +40,25 @@ func ValidateBirthdate(birthdate *time.Time) error {
 
 var now = time.Now
 
-// ValidateCoarseLocation enforces the maximum stored location length.
+// rawZipPattern matches a bare US ZIP code (12345 or 12345-6789) with no city/state context.
+// We want stored locations to be human-readable ("Dania Beach, FL"), so we reject these
+// even though the frontend autocomplete is the primary normalization layer.
+var rawZipPattern = regexp.MustCompile(`^\d{5}(-\d{4})?$`)
+
+// ValidateCoarseLocation enforces the maximum stored location length and rejects
+// un-normalized inputs (bare ZIP codes) that bypassed the location autocomplete.
 func ValidateCoarseLocation(coarseLocation string) error {
-	if len(coarseLocation) > 200 {
+	if utf8.RuneCountInString(coarseLocation) > 200 {
 		return &ProfileValidationError{
 			Field:   "coarse_location",
 			Message: "must be 200 characters or fewer",
+		}
+	}
+
+	if rawZipPattern.MatchString(strings.TrimSpace(coarseLocation)) {
+		return &ProfileValidationError{
+			Field:   "coarse_location",
+			Message: "select a city from the suggestions instead of entering a ZIP code",
 		}
 	}
 

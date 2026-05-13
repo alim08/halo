@@ -351,6 +351,9 @@ function BasicsStep({
   const [year, setYear] = useState(initialYear);
   const [selectedRaceEthnicity, setSelectedRaceEthnicity] = useState<string[]>(raceEthnicity);
   
+  // `loc` is the normalized "City, State" string that gets persisted.
+  // It's only set from a suggestion click or reverse-geocode result — never from raw typing,
+  // so a user can't save a bare ZIP like "33004" by typing and skipping the dropdown.
   const [loc, setLoc] = useState(location);
   const [locationSearch, setLocationSearch] = useState(location);
   const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
@@ -407,10 +410,13 @@ function BasicsStep({
   };
 
   const handleLocationInputChange = (value: string) => {
-    setLoc(value);
     setLocationSearch(value);
     setLocationError("");
     setShowLocationDropdown(true);
+    // If the user starts editing again, the previously confirmed selection is no longer valid.
+    if (loc && value !== loc) {
+      setLoc("");
+    }
   };
 
   const selectLocation = (suggestion: LocationSuggestion) => {
@@ -508,9 +514,21 @@ function BasicsStep({
       return;
     }
 
-    if (!loc.trim()) {
-      setLocalError("Location is required");
-      return;
+    let resolvedLocation = loc.trim();
+    if (!resolvedLocation) {
+      // User typed but didn't pick from the dropdown. If a suggestion is available
+      // (e.g. they typed a ZIP that resolved to "Dania Beach, FL"), accept the top match.
+      if (locationSearch.trim() && locationSuggestions.length > 0) {
+        resolvedLocation = locationSuggestions[0].display;
+        setLoc(resolvedLocation);
+        setLocationSearch(resolvedLocation);
+      } else if (locationLoading) {
+        setLocalError("Still looking up that location — give it a moment.");
+        return;
+      } else {
+        setLocalError("Pick a city from the suggestions so we can save it correctly.");
+        return;
+      }
     }
 
     const age = getAge(bdStr);
@@ -525,7 +543,7 @@ function BasicsStep({
     }
 
     setLocalError("");
-    onNext(bdStr, selectedRaceEthnicity, loc.trim());
+    onNext(bdStr, selectedRaceEthnicity, resolvedLocation);
   }
 
   const currentYear = new Date().getFullYear();
