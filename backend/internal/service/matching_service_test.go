@@ -93,12 +93,12 @@ func TestRecencyScore(t *testing.T) {
 		want float64
 	}{
 		{"nil returns 0", nil, 0},
-		{"just now", ago(time.Minute), 0.30},
-		{"23 hours ago", ago(23 * time.Hour), 0.30},
-		{"25 hours ago", ago(25 * time.Hour), 0.20},
-		{"6 days ago", ago(6 * 24 * time.Hour), 0.20},
-		{"8 days ago", ago(8 * 24 * time.Hour), 0.10},
-		{"29 days ago", ago(29 * 24 * time.Hour), 0.10},
+		{"just now", ago(time.Minute), 1.00},
+		{"23 hours ago", ago(23 * time.Hour), 1.00},
+		{"25 hours ago", ago(25 * time.Hour), 0.66},
+		{"6 days ago", ago(6 * 24 * time.Hour), 0.66},
+		{"8 days ago", ago(8 * 24 * time.Hour), 0.33},
+		{"29 days ago", ago(29 * 24 * time.Hour), 0.33},
 		{"31 days ago", ago(31 * 24 * time.Hour), 0},
 		{"one year ago", ago(365 * 24 * time.Hour), 0},
 	}
@@ -379,10 +379,10 @@ func TestRecencyScore_ExactBoundaries(t *testing.T) {
 		last *time.Time
 		want float64
 	}{
-		// Exactly at the 24-hour boundary crosses into the 20-cent bin.
-		{"exactly 24h ago", ago(24 * time.Hour), 0.20},
-		// Exactly at the 7-day boundary crosses into the 10-cent bin.
-		{"exactly 7 days ago", ago(7 * 24 * time.Hour), 0.10},
+		// Exactly at the 24-hour boundary crosses into the 7-day bin.
+		{"exactly 24h ago", ago(24 * time.Hour), 0.66},
+		// Exactly at the 7-day boundary crosses into the 30-day bin.
+		{"exactly 7 days ago", ago(7 * 24 * time.Hour), 0.33},
 		// Exactly at the 30-day boundary returns 0.
 		{"exactly 30 days ago", ago(30 * 24 * time.Hour), 0},
 	}

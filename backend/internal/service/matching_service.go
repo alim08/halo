@@ -46,7 +46,9 @@ func (s *MatchingService) RankCandidates(viewer *model.User, candidates []*model
 	return scored
 }
 
-// computeScore returns a [0, 1] compatibility score.
+// computeScore returns a [0, 1] compatibility score. Every component helper
+// returns a value in [0, 1], so the weights below are the real effective
+// contribution to the final score.
 //
 // Weight breakdown:
 //   - Interests Jaccard similarity:  35%
@@ -189,27 +191,35 @@ func locationMatch(a, b string) float64 {
 	return 0
 }
 
-// recencyScore returns a step-bin score based on the candidate's last_active_at:
+// recencyScore returns a [0, 1] step-bin score based on the candidate's
+// last_active_at:
 //
-//	< 1 day  → 0.30
-//	< 7 days → 0.20
-//	< 30 days → 0.10
-//	≥ 30 days or unknown → 0.0
+//	< 1 day              → 1.00
+//	< 7 days             → 0.66
+//	< 30 days            → 0.33
+//	≥ 30 days or unknown → 0.00
 //
 // Step bins are intentionally coarse — the goal is "is this account live?",
-// not real-time presence detection.
+// not real-time presence detection. The 1.00 / 0.66 / 0.33 ratios preserve
+// the original 3:2:1 ordering so the 10% weight in computeScore is real
+// rather than capped at 3%.
 func recencyScore(lastActive *time.Time) float64 {
 	if lastActive == nil {
 		return 0
 	}
+	const (
+		recencyVeryRecent = 1.00 // active in the last 24 hours
+		recencyRecent     = 0.66 // active in the last 7 days
+		recencyStale      = 0.33 // active in the last 30 days
+	)
 	age := time.Since(*lastActive)
 	switch {
 	case age < 24*time.Hour:
-		return 0.30
+		return recencyVeryRecent
 	case age < 7*24*time.Hour:
-		return 0.20
+		return recencyRecent
 	case age < 30*24*time.Hour:
-		return 0.10
+		return recencyStale
 	default:
 		return 0
 	}

@@ -33,7 +33,9 @@ type FindCandidatesParams struct {
 	// to "man" or "woman". "everyone" or empty disables the outbound filter.
 	ViewerTargetGender string
 	// ViewerAgePrefMin / ViewerAgePrefMax are the viewer's preferred age range.
-	// Both zero means the age-preference filter is skipped.
+	// The min and max bounds are applied independently: a zero value disables
+	// only that bound, not the entire filter (so a viewer who sets only a
+	// lower bound still gets that lower bound enforced).
 	ViewerAgePrefMin int
 	ViewerAgePrefMax int
 	// ViewerAge is the viewer's age in whole years.
@@ -107,24 +109,38 @@ func (r *DiscoveryRepository) FindCandidates(ctx context.Context, p FindCandidat
 		      OR lower(u.profile_data->>'gender') = $3
 		  )
 
-		  -- Hard filter: candidate's age is within the viewer's preference range.
-		  -- Skipped when viewer has not set age preferences ($4 = 0 OR $5 = 0).
+		  -- Hard filter: candidate's age is at least the viewer's preferred min.
+		  -- Skipped when viewer has not set a min ($4 = 0).
 		  AND (
-		      $4 = 0 OR $5 = 0
+		      $4 = 0
 		      OR u.birthdate IS NULL
-		      OR EXTRACT(YEAR FROM AGE(NOW(), u.birthdate))::int BETWEEN $4 AND $5
+		      OR EXTRACT(YEAR FROM AGE(NOW(), u.birthdate))::int >= $4
 		  )
 
-		  -- Hard filter: viewer's age is within the candidate's preference range.
-		  -- Skipped when viewer age is unknown ($6 = 0) or candidate has no preference.
+		  -- Hard filter: candidate's age is at most the viewer's preferred max.
+		  -- Skipped when viewer has not set a max ($5 = 0).
+		  AND (
+		      $5 = 0
+		      OR u.birthdate IS NULL
+		      OR EXTRACT(YEAR FROM AGE(NOW(), u.birthdate))::int <= $5
+		  )
+
+		  -- Hard filter: viewer's age is at least the candidate's preferred min.
+		  -- Skipped when viewer age is unknown ($6 = 0) or the candidate's
+		  -- stored value is missing or non-numeric. The jsonb_typeof guard
+		  -- prevents a runtime cast failure if profile_data contains a
+		  -- malformed value (string, null literal, etc.) for the key.
 		  AND (
 		      $6 = 0
-		      OR (u.profile_data->>'age_pref_min') IS NULL
+		      OR jsonb_typeof(u.profile_data->'age_pref_min') IS DISTINCT FROM 'number'
 		      OR $6::int >= (u.profile_data->>'age_pref_min')::int
 		  )
+
+		  -- Hard filter: viewer's age is at most the candidate's preferred max.
+		  -- Skipped under the same conditions as the min gate above.
 		  AND (
 		      $6 = 0
-		      OR (u.profile_data->>'age_pref_max') IS NULL
+		      OR jsonb_typeof(u.profile_data->'age_pref_max') IS DISTINCT FROM 'number'
 		      OR $6::int <= (u.profile_data->>'age_pref_max')::int
 		  )
 
