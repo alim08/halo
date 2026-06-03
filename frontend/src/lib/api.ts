@@ -3,7 +3,9 @@
  * All requests go through this module so auth is handled automatically.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === "production" ? "" : "http://localhost:8080");
 
 type RequestOptions = {
   method?: string;
@@ -108,6 +110,14 @@ export type MeResponse = {
   birthdate?: string;
   coarse_location?: string;
   profile_data: Record<string, unknown>;
+};
+
+export type ProfileOptionsResponse = {
+  race_ethnicity: string[];
+  race_ethnicity_exclusive: string;
+  race_ethnicity_preferences: string[];
+  race_ethnicity_preference_exclusive: string;
+  default_race_ethnicity_preferences: string[];
 };
 
 export type ComparisonProfile = {
@@ -238,6 +248,9 @@ export const api = {
   me: {
     get() {
       return request<MeResponse>("/v1/me");
+    },
+    getProfileOptions() {
+      return request<ProfileOptionsResponse>("/v1/profile/options");
     },
     updateProfile(data: {
       birthdate?: string;

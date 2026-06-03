@@ -67,7 +67,12 @@ func (s *ProfileService) GetMe(ctx context.Context, userID string) (*MeResponse,
 // rather than replacing it.
 func (s *ProfileService) UpsertProfile(ctx context.Context, userID string, req *UpsertProfileRequest) (*MeResponse, error) {
 	// Validate birthdate (18+ rule).
-	if err := ValidateBirthdate(req.Birthdate); err != nil {
+	if err := ValidateBirthdate(req.Birthdate, time.Now()); err != nil {
+		return nil, err
+	}
+
+	// Validate coarse location length.
+	if err := ValidateCoarseLocation(req.CoarseLocation); err != nil {
 		return nil, err
 	}
 
@@ -141,9 +146,11 @@ func mergeJSON(base, patch json.RawMessage) json.RawMessage {
 	var patchMap map[string]json.RawMessage
 
 	if err := json.Unmarshal(base, &baseMap); err != nil {
+		slog.Warn("merge profile_data failed: invalid base JSON", "error", err)
 		return patch
 	}
 	if err := json.Unmarshal(patch, &patchMap); err != nil {
+		slog.Warn("merge profile_data failed: invalid patch JSON", "error", err)
 		return base
 	}
 
@@ -153,6 +160,7 @@ func mergeJSON(base, patch json.RawMessage) json.RawMessage {
 
 	merged, err := json.Marshal(baseMap)
 	if err != nil {
+		slog.Warn("merge profile_data failed: marshal merged JSON", "error", err)
 		return base
 	}
 	return merged

@@ -21,6 +21,15 @@ func NewMeHandler(profileService *service.ProfileService) *MeHandler {
 	return &MeHandler{profileService: profileService}
 }
 
+// ProfileOptionsResponse is the JSON response for GET /v1/profile/options.
+type ProfileOptionsResponse struct {
+	RaceEthnicity                    []string `json:"race_ethnicity"`
+	RaceEthnicityExclusive           string   `json:"race_ethnicity_exclusive"`
+	RaceEthnicityPreferences         []string `json:"race_ethnicity_preferences"`
+	RaceEthnicityPreferenceExclusive string   `json:"race_ethnicity_preference_exclusive"`
+	DefaultRaceEthnicityPreferences  []string `json:"default_race_ethnicity_preferences"`
+}
+
 // GetMe handles GET /v1/me.
 func (h *MeHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	userID := auth.UserIDFromContext(r.Context())
@@ -40,6 +49,17 @@ func (h *MeHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httputil.EncodeJSON(w, http.StatusOK, me)
+}
+
+// GetProfileOptions handles GET /v1/profile/options.
+func (h *MeHandler) GetProfileOptions(w http.ResponseWriter, _ *http.Request) {
+	httputil.EncodeJSON(w, http.StatusOK, ProfileOptionsResponse{
+		RaceEthnicity:                    service.AllowedRaceEthnicityOptions(),
+		RaceEthnicityExclusive:           service.RaceEthnicityExclusiveOption(),
+		RaceEthnicityPreferences:         service.AllowedRaceEthnicityPreferenceOptions(),
+		RaceEthnicityPreferenceExclusive: service.RaceEthnicityPreferenceExclusiveOption(),
+		DefaultRaceEthnicityPreferences:  service.DefaultRaceEthnicityPreferenceOptions(),
+	})
 }
 
 // upsertProfileHTTPRequest is used only for JSON decoding since

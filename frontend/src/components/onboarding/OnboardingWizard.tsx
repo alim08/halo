@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOnboarding } from "./useOnboarding";
+import { API_BASE } from "@/lib/api";
 
 // ── Step definitions ─────────────────────────────────────
 
@@ -19,6 +20,14 @@ const RELATIONSHIP_INTENTIONS_OPTIONS = [
   "Open to exploring",
   "Marriage-minded",
   "Still figuring it out",
+];
+
+const AGE_PRESET_OPTIONS = [
+  { label: "18-25", min: 18, max: 25 },
+  { label: "25-35", min: 25, max: 35 },
+  { label: "35-50", min: 35, max: 50 },
+  { label: "50+", min: 50, max: 99 },
+  { label: "Open", min: 18, max: 99 },
 ];
 
 const LIFESTYLE_OPTIONS = [
@@ -135,8 +144,11 @@ export function OnboardingWizard() {
     loading,
     saving,
     error,
+    restoreError,
+    profileOptions,
     nextStep,
     prevStep,
+    retryRestore,
     totalSteps,
   } = useOnboarding();
 
@@ -144,6 +156,25 @@ export function OnboardingWizard() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-gray-400">Loading your progress…</div>
+      </div>
+    );
+  }
+
+  if (restoreError) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="w-full max-w-sm space-y-4 text-center">
+          <div className="rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">
+            {restoreError}
+          </div>
+          <button
+            type="button"
+            onClick={retryRestore}
+            className="w-full rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 transition-opacity"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     );
   }
@@ -171,9 +202,12 @@ export function OnboardingWizard() {
       {step === 0 && (
         <BasicsStep
           birthdate={state.birthdate}
+          raceEthnicity={state.race_ethnicity}
+          raceEthnicityOptions={profileOptions.raceEthnicity}
+          raceEthnicityExclusive={profileOptions.raceEthnicityExclusive}
           location={state.coarse_location}
-          onNext={(birthdate, location) =>
-            nextStep({ birthdate, coarse_location: location })
+          onNext={(birthdate, race_ethnicity, location) =>
+            nextStep({ birthdate, race_ethnicity, coarse_location: location })
           }
           saving={saving}
         />
@@ -213,6 +247,26 @@ export function OnboardingWizard() {
       )}
 
       {step === 4 && (
+        <AgeRacePreferenceStep
+          agePrefMin={state.age_pref_min}
+          agePrefMax={state.age_pref_max}
+          raceEthnicityPreferences={state.race_ethnicity_preferences}
+          raceEthnicityPreferenceOptions={profileOptions.raceEthnicityPreferences}
+          raceEthnicityPreferenceExclusive={profileOptions.raceEthnicityPreferenceExclusive}
+          raceEthnicityPreferenceDefault={profileOptions.defaultRaceEthnicityPreferences}
+          onNext={(age_pref_min, age_pref_max, race_ethnicity_preferences) =>
+            nextStep({
+              age_pref_min,
+              age_pref_max,
+              race_ethnicity_preferences,
+            })
+          }
+          onBack={prevStep}
+          saving={saving}
+        />
+      )}
+
+      {step === 5 && (
         <LifestyleStep
           lifestyle={state.lifestyle_habits}
           onNext={(lifestyle_habits) =>
@@ -223,7 +277,7 @@ export function OnboardingWizard() {
         />
       )}
 
-      {step === 5 && (
+      {step === 6 && (
         <ConnectionStyleStep
           connectionStyle={state.connection_style}
           onNext={(connection_style) =>
@@ -234,7 +288,7 @@ export function OnboardingWizard() {
         />
       )}
 
-      {step === 6 && (
+      {step === 7 && (
         <InterestsStep
           selected={state.interests}
           onNext={(interests) => nextStep({ interests })}
@@ -243,7 +297,7 @@ export function OnboardingWizard() {
         />
       )}
 
-      {step === 7 && (
+      {step === 8 && (
         <PromptsStep
           bio={state.bio}
           prompts={state.prompts}
@@ -259,13 +313,19 @@ export function OnboardingWizard() {
 // ── Step 0: Basics (birthdate + location) ────────────────
 function BasicsStep({
   birthdate,
+  raceEthnicity,
+  raceEthnicityOptions,
+  raceEthnicityExclusive,
   location,
   onNext,
   saving,
 }: {
   birthdate: string;
+  raceEthnicity: string[];
+  raceEthnicityOptions: string[];
+  raceEthnicityExclusive: string;
   location: string;
-  onNext: (birthdate: string, location: string) => void;
+  onNext: (birthdate: string, raceEthnicity: string[], location: string) => void;
   saving: boolean;
 }) {
   const [initialYear, initialMonth, initialDay] = birthdate
@@ -289,7 +349,11 @@ function BasicsStep({
   const [month, setMonth] = useState(initialMonth);
   const [day, setDay] = useState(initialDay);
   const [year, setYear] = useState(initialYear);
+  const [selectedRaceEthnicity, setSelectedRaceEthnicity] = useState<string[]>(raceEthnicity);
   
+  // `loc` is the normalized "City, State" string that gets persisted.
+  // It's only set from a suggestion click or reverse-geocode result — never from raw typing,
+  // so a user can't save a bare ZIP like "33004" by typing and skipping the dropdown.
   const [loc, setLoc] = useState(location);
   const [locationSearch, setLocationSearch] = useState(location);
   const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
@@ -328,8 +392,7 @@ function BasicsStep({
     setLocationLoading(true);
     setLocationError("");
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-      const response = await fetch(`${apiBase}/v1/locations/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`${API_BASE}/v1/locations/search?q=${encodeURIComponent(query)}`);
 
       if (!response.ok) {
         const text = await response.text();
@@ -347,10 +410,13 @@ function BasicsStep({
   };
 
   const handleLocationInputChange = (value: string) => {
-    setLoc(value);
     setLocationSearch(value);
     setLocationError("");
     setShowLocationDropdown(true);
+    // If the user starts editing again, the previously confirmed selection is no longer valid.
+    if (loc && value !== loc) {
+      setLoc("");
+    }
   };
 
   const selectLocation = (suggestion: LocationSuggestion) => {
@@ -358,6 +424,20 @@ function BasicsStep({
     setLocationSearch(suggestion.display);
     setLocationSuggestions([]);
     setShowLocationDropdown(false);
+  };
+
+  const toggleRaceEthnicity = (option: string) => {
+    setSelectedRaceEthnicity((prev) => {
+      if (option === raceEthnicityExclusive) {
+        return prev.includes(option) ? [] : [option];
+      }
+
+      const withoutPreferNot = prev.filter((item) => item !== raceEthnicityExclusive);
+      if (withoutPreferNot.includes(option)) {
+        return withoutPreferNot.filter((item) => item !== option);
+      }
+      return [...withoutPreferNot, option];
+    });
   };
 
   const useCurrentLocation = async () => {
@@ -374,8 +454,7 @@ function BasicsStep({
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-          const response = await fetch(`${apiBase}/v1/locations/reverse-geocode?lat=${latitude}&lon=${longitude}`);
+          const response = await fetch(`${API_BASE}/v1/locations/reverse-geocode?lat=${latitude}&lon=${longitude}`);
 
           if (!response.ok) {
             const text = await response.text();
@@ -435,9 +514,21 @@ function BasicsStep({
       return;
     }
 
-    if (!loc.trim()) {
-      setLocalError("Location is required");
-      return;
+    let resolvedLocation = loc.trim();
+    if (!resolvedLocation) {
+      // User typed but didn't pick from the dropdown. If a suggestion is available
+      // (e.g. they typed a ZIP that resolved to "Dania Beach, FL"), accept the top match.
+      if (locationSearch.trim() && locationSuggestions.length > 0) {
+        resolvedLocation = locationSuggestions[0].display;
+        setLoc(resolvedLocation);
+        setLocationSearch(resolvedLocation);
+      } else if (locationLoading) {
+        setLocalError("Still looking up that location — give it a moment.");
+        return;
+      } else {
+        setLocalError("Pick a city from the suggestions so we can save it correctly.");
+        return;
+      }
     }
 
     const age = getAge(bdStr);
@@ -446,8 +537,13 @@ function BasicsStep({
       return;
     }
 
+    if (selectedRaceEthnicity.length === 0) {
+      setLocalError(`Please select your race/ethnicity or choose ${raceEthnicityExclusive}`);
+      return;
+    }
+
     setLocalError("");
-    onNext(bdStr, loc.trim());
+    onNext(bdStr, selectedRaceEthnicity, resolvedLocation);
   }
 
   const currentYear = new Date().getFullYear();
@@ -549,6 +645,37 @@ function BasicsStep({
             ? `Age: ${getAge(getBirthdateString())}`
             : "Must be 18+"}
         </p>
+      </div>
+
+      {/* Race/Ethnicity Selector */}
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-semibold text-gray-900">
+            Race/ethnicity
+          </label>
+          <p className="mt-1 text-xs text-gray-500">
+            Select all that apply.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {raceEthnicityOptions.map((option) => {
+            const isSelected = selectedRaceEthnicity.includes(option);
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => toggleRaceEthnicity(option)}
+                className={`rounded-full px-3.5 py-2 text-sm font-medium border-2 transition-all ${
+                  isSelected
+                    ? "border-halo-primary bg-halo-primary text-white shadow-sm"
+                    : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
+                }`}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Location Autocomplete */}
@@ -950,7 +1077,189 @@ function RelationshipIntentionsStep({
   );
 }
 
-// ── Step 4: Tags ─────────────────────────────────────────
+// ── Step 4: Preferences ──────────────────────────────────
+
+function AgeRacePreferenceStep({
+  agePrefMin,
+  agePrefMax,
+  raceEthnicityPreferences,
+  raceEthnicityPreferenceOptions,
+  raceEthnicityPreferenceExclusive,
+  raceEthnicityPreferenceDefault,
+  onNext,
+  onBack,
+  saving,
+}: {
+  agePrefMin: number;
+  agePrefMax: number;
+  raceEthnicityPreferences: string[];
+  raceEthnicityPreferenceOptions: string[];
+  raceEthnicityPreferenceExclusive: string;
+  raceEthnicityPreferenceDefault: string[];
+  onNext: (agePrefMin: number, agePrefMax: number, raceEthnicityPreferences: string[]) => void;
+  onBack: () => void;
+  saving: boolean;
+}) {
+  const [minAge, setMinAge] = useState(clampAge(agePrefMin || 18));
+  const [maxAge, setMaxAge] = useState(clampAge(agePrefMax || 99));
+  const [selectedPreferences, setSelectedPreferences] = useState<string[]>(
+    raceEthnicityPreferences.length > 0 ? raceEthnicityPreferences : raceEthnicityPreferenceDefault
+  );
+
+  function applyPreset(min: number, max: number) {
+    setMinAge(min);
+    setMaxAge(max);
+  }
+
+  function toggleRacePreference(option: string) {
+    setSelectedPreferences((prev) => {
+      if (option === raceEthnicityPreferenceExclusive) {
+        return [raceEthnicityPreferenceExclusive];
+      }
+
+      const withoutOpen = prev.filter((item) => item !== raceEthnicityPreferenceExclusive);
+      if (withoutOpen.includes(option)) {
+        const next = withoutOpen.filter((item) => item !== option);
+        return next.length > 0 ? next : raceEthnicityPreferenceDefault;
+      }
+      return [...withoutOpen, option];
+    });
+  }
+
+  function handleMinAgeChange(value: number) {
+    setMinAge(Math.min(value, maxAge));
+  }
+
+  function handleMaxAgeChange(value: number) {
+    setMaxAge(Math.max(value, minAge));
+  }
+
+  function handleNext() {
+    onNext(minAge, maxAge, selectedPreferences);
+  }
+
+  const canSubmit = minAge >= 18 && maxAge <= 99 && minAge <= maxAge && selectedPreferences.length > 0;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold">Who would you like to meet?</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Set a comfortable age range and race/ethnicity preferences.
+        </p>
+      </div>
+
+      <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Age preference</h3>
+            <p className="mt-0.5 text-xs text-gray-500">Drag the range or pick a preset.</p>
+          </div>
+          <div className="rounded-full bg-halo-primary/10 px-3 py-1 text-sm font-semibold text-halo-primary">
+            {minAge}-{maxAge === 99 ? "99+" : maxAge}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className="space-y-2 rounded-lg bg-gray-50 p-3">
+            <span className="block text-xs font-semibold uppercase text-gray-500">Minimum</span>
+            <input
+              type="range"
+              min={18}
+              max={99}
+              value={minAge}
+              onChange={(e) => handleMinAgeChange(Number(e.target.value))}
+              className="w-full accent-halo-primary"
+            />
+            <span className="block text-sm font-semibold text-gray-900">{minAge}</span>
+          </label>
+          <label className="space-y-2 rounded-lg bg-gray-50 p-3">
+            <span className="block text-xs font-semibold uppercase text-gray-500">Maximum</span>
+            <input
+              type="range"
+              min={18}
+              max={99}
+              value={maxAge}
+              onChange={(e) => handleMaxAgeChange(Number(e.target.value))}
+              className="w-full accent-halo-primary"
+            />
+            <span className="block text-sm font-semibold text-gray-900">
+              {maxAge === 99 ? "99+" : maxAge}
+            </span>
+          </label>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {AGE_PRESET_OPTIONS.map((preset) => {
+            const isSelected = minAge === preset.min && maxAge === preset.max;
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => applyPreset(preset.min, preset.max)}
+                className={`rounded-full px-3.5 py-2 text-sm font-medium border-2 transition-all ${
+                  isSelected
+                    ? "border-halo-primary bg-halo-primary text-white shadow-sm"
+                    : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
+                }`}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-semibold text-gray-900">
+            Race/ethnicity preference
+          </label>
+          <p className="mt-1 text-xs text-gray-500">
+            Choose specific preferences or stay open to all.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {raceEthnicityPreferenceOptions.map((option) => {
+            const isSelected = selectedPreferences.includes(option);
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => toggleRacePreference(option)}
+                className={`rounded-full px-3.5 py-2 text-sm font-medium border-2 transition-all ${
+                  isSelected
+                    ? "border-halo-primary bg-halo-primary text-white shadow-sm"
+                    : "border-gray-200 text-gray-700 hover:border-halo-primary hover:bg-halo-primary/5"
+                }`}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex gap-3 pt-4">
+        <button
+          onClick={onBack}
+          className="flex-1 rounded-lg border border-gray-300 px-4 py-3 min-h-touch font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          Back
+        </button>
+        <button
+          onClick={handleNext}
+          disabled={!canSubmit || saving}
+          className="flex-1 rounded-lg bg-halo-primary px-4 py-3 min-h-touch text-white font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          {saving ? "Saving…" : "Continue"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 5: Tags ─────────────────────────────────────────
 
 
 
@@ -1343,15 +1652,30 @@ function PromptsStep({
 
 // ── Helpers ──────────────────────────────────────────────
 
+function clampAge(value: number): number {
+  if (!Number.isFinite(value)) return 18;
+  return Math.min(99, Math.max(18, Math.round(value)));
+}
+
 function getAge(dateStr: string): number {
   // Parse YYYY-MM-DD to avoid timezone-sensitive UTC parsing.
   // Construct date in local timezone using new Date(year, month-1, day).
-  const [yearStr, monthStr, dayStr] = dateStr.split("-");
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
-  const day = parseInt(dayStr, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!match) return -1;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
 
   const birth = new Date(year, month - 1, day);
+  if (
+    birth.getFullYear() !== year ||
+    birth.getMonth() !== month - 1 ||
+    birth.getDate() !== day
+  ) {
+    return -1;
+  }
+
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();

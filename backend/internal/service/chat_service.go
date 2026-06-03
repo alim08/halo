@@ -140,10 +140,10 @@ func (s *ChatService) ListMatches(ctx context.Context, userID string, limit int,
 
 // MatchSummary is the JSON shape for the match list response.
 type MatchSummary struct {
-	MatchID                string      `json:"match_id"`
-	Partner                UserPublic  `json:"partner"`
-	CurrentConnectionLevel int         `json:"current_connection_level"`
-	LastMessageAt          *time.Time  `json:"last_message_at"`
+	MatchID                string     `json:"match_id"`
+	Partner                UserPublic `json:"partner"`
+	CurrentConnectionLevel int        `json:"current_connection_level"`
+	LastMessageAt          *time.Time `json:"last_message_at"`
 }
 
 // UserPublic is the public-facing user info in match/chat contexts.
@@ -174,11 +174,7 @@ func BuildUserPublic(u *model.User) UserPublic {
 	// Compute age.
 	if u.Birthdate != nil {
 		now := time.Now()
-		age := now.Year() - u.Birthdate.Year()
-		if now.YearDay() < u.Birthdate.YearDay() {
-			age--
-		}
-		pub.Age = age
+		pub.Age = ageInYears(u.Birthdate, now)
 	}
 
 	// Extract display_name and vibe_tags from profile_data.
